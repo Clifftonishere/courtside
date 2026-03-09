@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Search, ChevronRight } from "lucide-react";
+import { Search, ChevronRight, Zap } from "lucide-react";
 
 export function DNAView() {
   return (
