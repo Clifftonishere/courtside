@@ -1,0 +1,240 @@
+# IRIS + Edge Protocol — Combined Mockup Prompt for Replit
+
+Paste this entire prompt into Replit's AI assistant or as the starting point for a new React project.
+
+---
+
+Build a single-page React application that mockups the combined **IRIS + Edge** NBA platform. IRIS is an AI-powered NBA intelligence platform. Edge is an AI-powered microbetting layer built on top of IRIS. Together they create a "research → action" loop for NBA fanatics.
+
+The app should have a top navigation bar with tabs: **LIVE**, **DNA**, **EDGE** (the betting layer), plus a persistent game ticker. Mirror the dark, cinematic design language shown in the IRIS screenshots below.
+
+## Design System (Critical — Follow Exactly)
+
+### Colors
+```
+Background (LIVE page):  #FAFAFA (off-white)
+Background (DNA page):   #050507 (near-black)  
+Background (EDGE page):  #0A0A0C (very dark, between LIVE and DNA)
+Card surface:            #0F1012 (dark cards on dark pages), #FFFFFF (cards on light pages)
+Green:                   #10b981 (live indicators, wins, positive values, CTA buttons on Edge)
+Red:                     #EF5350 (losses, live dots)
+Orange:                  #E65100 (warnings, trending)
+Muted text:              #999999 (secondary text on dark), #6b7280 (on light)
+Border (dark pages):     rgba(255,255,255,0.06)
+Border (light pages):    #F0F0F0
+Purple:                  #7a6aaa (parlay accent on Edge)
+```
+
+### Typography  
+- **Syne** (weight 700-800) — All headlines, player names, bold declarations, stats. This is the signature IRIS font. Import from Google Fonts.
+- **DM Sans** (weight 400-700) — Body text, labels, editorial content, descriptions.
+- **IBM Plex Mono** — Numbers, odds, data values, multipliers.
+
+### Opacity Hierarchy (DNA/dark pages)
+```
+white at 85% — Primary (player names, core stats)
+white at 40% — Secondary (body text, paragraphs)
+white at 25% — Tertiary (supporting text)
+white at 15% — Labels, timestamps
+white at 5%  — Subtle backgrounds, dividers
+```
+
+### Key Visual Elements
+- Cards have very subtle borders (1px, rgba(255,255,255,0.06) on dark, #F0F0F0 on light)
+- No heavy shadows — depth comes from layered opacity
+- Green pulsing dot for live games (animation: scale 1→2, opacity 1→0, 2s infinite)
+- Generous whitespace, especially on dark pages
+- Player headshot placeholders: colored circles with player initials
+
+---
+
+## Page 1: LIVE (Light Background #FAFAFA)
+
+This is the real-time game intelligence page.
+
+### Layout
+- **Left sidebar** (280px): Stacked game cards for tonight's games. Each card shows: team abbreviations with records (e.g., "OKC 48-15"), score if live, game time if upcoming, a colored bar at the bottom (green = IRIS pick confidence). The selected/active game has a highlighted border.
+- **Main content area**: Shows the selected game's full analysis.
+
+### Game Detail (Main Area)
+For the selected game, show:
+
+1. **Header**: Team names in large Syne font with records. Scores on the right side. Quarter and game clock below scores. If live, show a green pulsing dot + "Q3 · 4:47".
+
+2. **Live Score Bar**: A horizontal bar showing "OKC 69" on the left and "63 NYK" on the right, with team colors as accents. Show the spread ("OKC +6") and a momentum indicator ("NYK ON A 8-0 RUN" with green dot).
+
+3. **IRIS LIVE VERDICT** (or PRE-GAME VERDICT): A section with:
+   - Green dot + "LIVE VERDICT" label + quarter timestamp
+   - Bold Syne headline: "OKC controlling the pace — up 6 through Q3."
+   - One line of supporting detail: "Holmgren has 22 on 8-11 FG. OKC lead by 6 through Q3."
+   - "IRIS TAKES · LIVE" label at bottom
+
+4. **IRIS PICK** box (dark card on the light page): Shows "IRIS PICK" label in green, then "ORL over DAL" in large Syne text, then a quote in italics: "ORL's defense smothers a DAL offense that has no stars left standing." Label: "LOCKED IN · PRE-GAME"
+
+5. **"Bet on this" CTA**: A subtle green-bordered button below the IRIS PICK that says "Bet on IRIS's pick on Edge →". This is the bridge to the Edge tab.
+
+### Mock Data for LIVE
+Show 4 games in the sidebar:
+- OKC 48-15 vs NYK 40-22 (Q3 · 4:47, score 69-63) — LIVE
+- CHA 31-31 vs BOS 41-20 (Q2 · 0:00, score 64-43) — LIVE  
+- POR 29-33 vs MEM 23-37 (Q2 · 10:43, score 34-34) — LIVE
+- DAL 21-40 vs ORL 32-28 (7:00 PM ET) — Upcoming with pre-game verdict
+
+---
+
+## Page 2: DNA (Dark Background #050507)
+
+This is the player intelligence page.
+
+### Layout
+- **Header area**: Large "DNA" text in Syne 800 weight, with subtitle "Every player dissected. Tendencies, edges, and blind spots." in muted text.
+- **Player constellation**: A dark circular visualization area (like a star field) with 4-5 floating player bubbles. Each bubble shows a small player avatar circle, their name, and their PPG. Larger bubbles = higher-rated players. Subtle connecting lines between them. This is decorative — doesn't need to be interactive.
+- **Right sidebar**: "UPCOMING" section with tonight's game matchup cards.
+- **Below**: "Trending" section with horizontal scrolling player cards.
+
+### Trending Player Cards
+4-5 cards in a row, each showing:
+- Player avatar (colored circle with initials)
+- Team indicator dot (team color) + team abbreviation
+- Player name in Syne bold
+- One-liner identity: "the most unguardable player in basketball" (in muted text)
+- Three stats in team color: PPG, RPG, APG with labels
+- Colored bottom border (team color, subtle gradient)
+
+Use these players: SGA (OKC, 31.6/4.4/6.4), Anthony Edwards (MIN, 29.6/5.1/3.6), Jaylen Brown (BOS, 28.7/7.2/5.1), Donovan Mitchell (CLE, 28.6/4.5/5.8).
+
+### Player Detail (DNA Shrine)
+When clicking a player card, show a detail page:
+
+1. **Hero**: Player name in huge Syne text, jersey number, position, team. Core stats (PTS/REB/AST/FG%). A hexagonal radar chart on the right showing 6 attributes. Background should have a subtle radial gradient in the team color at very low opacity.
+
+2. **IRIS Identity**: One bold sentence: "The most inevitable scorer in basketball — built different, wired different." Displayed in a slightly larger font than body text.
+
+3. **DISSECTION**: 2-column grid of glass-morphism cards (dark background, subtle border, slight blur). Each card has:
+   - Category label (small, muted): OFFENSE / DEFENSE / PLAYMAKING
+   - Skill name in Syne bold: "Pull-Up Midrange", "Downhill Attacking", "Three-Point Volume Shooting"
+   - Description paragraph in muted text
+
+4. **EXPLOITABLE weaknesses**: Similar cards but with a red-tinted top border and "EXPLOITABLE" label in red. Examples:
+   - "Over-Dribbling in Late-Clock Half-Court"
+   - "Weak-Side Defensive Rotations"  
+   - "Free Throw Volume in Clutch Moments"
+
+5. **SCOUT NOTES**: 3 quotes in italics on a dark card, attributed to fictional scouts. Example: "'He's 23 playing with the confidence of a guy who's already won three championships — either you have it or you don't, and he has all of it.'"
+
+6. **IRIS REPORT**: 2 paragraphs of editorial analysis in the muted text hierarchy. Written with voice, not just stats. Example: "There is a version of watching Anthony Edwards where you convince yourself you can stop him. The step-back is coming — you know it. The pull-up is coming — you've seen the film. And then he does it anyway, and the ball goes in, and 20,000 people lose their minds."
+
+7. **"Create a bet" CTA**: Below the profile, a green button: "Think you know Edwards' game? Create a bet on Edge →"
+
+---
+
+## Page 3: EDGE (Dark Background #0A0A0C)
+
+This is the microbetting layer. The design should feel like it belongs in the same family as DNA (dark, cinematic) but with green accents for betting CTAs.
+
+### Layout
+- **Left panel** (main content): Bet creation wizard + community bets feed
+- **Right panel** (sidebar, 340px): User stats, active bets, $EDGE holdings
+
+### Bet Creation Section
+- Section label: "CREATE YOUR BET" in Syne
+- Large input field with placeholder text in italic: 'Type anything — "Celtics win", "Edwards drops 35", "SGA triple-double"...'
+- Below the input: 6 clickable example chips showing different input styles:
+  - "Celtics win tonight"
+  - "Edwards drops 35"
+  - "no way Bronny plays"  
+  - "SGA gets a triple-double"
+  - "Draymond getting tossed"
+  - "Jokic 10 assists easy"
+
+- When a user "submits" (mock this with a button click that triggers an animation):
+  1. Show a 7-step AI analysis animation (small progress items that complete sequentially):
+     - Parsing your input ○→✓
+     - Identifying players & teams ○→✓
+     - Pulling IRIS intelligence ○→✓ (note: references IRIS, not generic "historical data")
+     - Checking IRIS DNA profile ○→✓
+     - Market calibration ○→✓
+     - Risk assessment ○→✓
+     - Final pricing ○→✓
+  2. Show a "Parsed" result card (dark glass card) showing extracted fields: Player, Stat, Condition, Game
+  3. Show the **Bet Simulator** (this is the key UI — NOT traditional odds):
+     - "You bet" input field with $ prefix (default $25)
+     - "You could win" display showing the dollar amount in large green Syne text
+     - "Profit: $XX.XX" below in muted text
+     - Details line: "XX% chance · X.XXx return · Powered by IRIS"
+     - Large green "Place Bet — $25" button
+     - If the multiplier is below 2x, show a subtle tag: "Likely outcome"
+     - If above 4x, show: "Long shot"
+
+### Community Bets Feed
+Below the creator, show "COMMUNITY BETS" section with filter chips (All, 🔥 Hot, Game Winner, Points, Special).
+
+Each bet card (dark glass card with subtle border):
+- Bet text in white at 85%: "Celtics beat the Lakers"
+- Multiplier badge: "1.45x · Likely" (muted pill shape)
+- Bottom row: Creator name (e.g., "James"), game label, "👥 89", and:
+  - Inline quick bet: small $ input → "→ $14.50" in green → "Bet" button
+  - "+Parlay" button in purple accent
+
+Include 8-10 bets with realistic variety:
+- 2-3 game winner bets at 1.30x-1.55x (favorites, labeled "Likely")
+- 3-4 player props at 1.65x-2.90x  
+- 2-3 exotic/novelty bets at 3.40x-7.50x (long shots)
+
+### Right Sidebar
+Dark panel showing:
+- **User section**: Avatar circle "J" + "James", balance $1,247, points 3,840
+- **$EDGE Holdings**: "12,450 EDGE · $1,868", Gold Tier badge in amber, "-2% vig discount", progress bar to next tier
+- **Active Bets**: 1-2 pending bets with bet text, stake, potential win, and a progress bar
+- **IRIS Picks Today**: Show 2-3 IRIS game picks with "Bet on this" mini-CTAs, bridging back to IRIS intelligence
+
+---
+
+## Top Navigation Bar (Persistent)
+
+Dark bar (#0A0A0A) with:
+- Left: IRIS eye logo + "IRIS" wordmark in Syne bold white
+- Center: Tab buttons — LIVE, DNA, EDGE (Edge tab has a small green dot indicator)
+- Right: Season record "56.6% W4" in green
+- Below nav: Scrolling ticker showing final scores and upcoming games (e.g., "FINAL: OKC 103, NYK 100" / "FINAL: CHA 118, BOS 89")
+
+The active tab should have a white/light background pill. The EDGE tab specifically should show "EDGE" with a small "NEW" or "BETA" badge.
+
+---
+
+## Scrolling Scores Ticker (Below Nav)
+
+A horizontally auto-scrolling bar showing game results and upcoming matchups:
+"FINAL: IND 107, LAC 130 | FINAL: OKC 103, NYK 100 | FINAL: CHA 118, BOS 89 | DAL vs ORL · 7:00 PM | BKN vs MIA · 7:30 PM"
+
+Muted text, subtle separator bars between items. Gradient fade on left and right edges.
+
+---
+
+## Technical Requirements
+
+- Single React application (use Create React App or plain React with Vite)
+- Tailwind CSS for styling (import via CDN if needed)
+- Google Fonts: import Syne (700, 800), DM Sans (400, 500, 600, 700), IBM Plex Mono (400, 500, 600)
+- All data is hardcoded/mock — no API calls
+- Use React hooks (useState, useEffect) for tab switching and mock animations
+- The AI analysis animation should use setTimeout/setInterval to simulate the 7-step progression
+- Make the bet simulator reactive — when the user changes the dollar input, the "you could win" updates instantly
+- Mobile responsive is NOT required — optimize for desktop (1440px+)
+- No localStorage or external storage
+
+## Animation Details
+
+- **Tab transitions**: Instant swap, no page transition needed
+- **AI analysis steps**: Each step takes 400-600ms, progressing sequentially with a small progress bar on the active step
+- **Live dot**: CSS animation — green dot that pulses (scale 1→1.8, opacity 1→0, 1.5s infinite)
+- **Card hover**: Subtle border color change (rgba(255,255,255,0.06) → rgba(255,255,255,0.12))
+- **Bet simulator**: The "you could win" number should update in real-time as the user types in the bet amount
+
+## Key Design Principles
+
+1. **Dark and cinematic** — This should feel premium, like a high-end sports analytics tool, not a gambling app
+2. **Typography-driven** — Syne headlines carry the personality. Large, bold, confident.
+3. **Restraint** — Minimal use of color. Green only for live indicators and positive actions. Red only for losses. Most of the UI is grayscale with opacity layers.
+4. **The IRIS voice carries into Edge** — Bet analyst descriptions should sound like IRIS wrote them, not a generic AI. Bold, specific, accountable.
+5. **"Research → Action" flow** — The CTA buttons connecting IRIS intelligence to Edge bets should feel natural, not forced. "Think you know Edwards' game? Bet on it."
