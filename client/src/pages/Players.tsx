@@ -1,206 +1,199 @@
 import { useState } from "react";
 import { Search } from "lucide-react";
 import { PLAYERS } from "@/lib/mock-data";
+import { SectionHeader } from "@/components/SectionHeader";
 
 type Player = typeof PLAYERS[0];
-
-const TIER_STYLES: Record<string, { border: string; badge: string; text: string; glow?: string }> = {
-  Generational: {
-    border: "border-[#FFD700]",
-    badge: "bg-[#fffbeb] text-[#b45309] border border-[#fde68a]",
-    text: "text-[#b45309]",
-    glow: "shadow-[0_0_16px_rgba(255,215,0,0.2)]",
-  },
-  "All-World": {
-    border: "border-[#C0C0C0]",
-    badge: "bg-[#f9fafb] text-[#6b7280] border border-[#d1d5db]",
-    text: "text-[#6b7280]",
-  },
-  Franchise: {
-    border: "border-[#CD7F32]",
-    badge: "bg-[#fff7ed] text-[#c2410c] border border-[#fed7aa]",
-    text: "text-[#c2410c]",
-  },
-  "All-Star": {
-    border: "border-[#E4E4E0]",
-    badge: "bg-[#f9fafb] text-[#9ca3af] border border-[#e5e7eb]",
-    text: "text-[#9ca3af]",
-  },
-  Rising: {
-    border: "border-[#E4E4E0]",
-    badge: "bg-[#f9fafb] text-[#9ca3af] border border-[#e5e7eb]",
-    text: "text-[#9ca3af]",
-  },
-};
-
-function StatPill({ label, val }: { label: string; val: string | number }) {
-  return (
-    <div className="text-center">
-      <div className="font-mono text-sm font-semibold text-[#1A1A18]">{val}</div>
-      <div className="font-mono text-[10px] text-[#AEAEA8] uppercase">{label}</div>
-    </div>
-  );
-}
-
-interface PlayerCardProps {
-  player: Player;
-  onClick: () => void;
-}
-
-function PlayerCard({ player, onClick }: PlayerCardProps) {
-  const tier = TIER_STYLES[player.tier] ?? TIER_STYLES["Rising"];
-
-  return (
-    <button
-      data-testid={`player-card-${player.id}`}
-      onClick={onClick}
-      className={`text-left border-2 ${tier.border} rounded-xl bg-white p-5 hover-elevate transition-all ${tier.glow ?? ""} w-full`}
-    >
-      {/* Avatar + name */}
-      <div className="flex items-start justify-between gap-2 mb-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-[#F3F3F0] flex items-center justify-center font-mono font-bold text-sm text-[#4A4A46] shrink-0">
-            {player.name.split(" ").map((n) => n[0]).join("")}
-          </div>
-          <div>
-            <div className="font-sans font-semibold text-sm text-[#1A1A18] leading-tight">
-              {player.name}
-            </div>
-            <div className="font-mono text-[10px] text-[#AEAEA8]">
-              {player.team} · {player.position}
-            </div>
-          </div>
-        </div>
-        <span className={`font-mono text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded shrink-0 ${tier.badge}`}>
-          {player.tier}
-        </span>
-      </div>
-
-      {/* Stats */}
-      <div className="flex items-center justify-between pt-3 border-t border-[#F3F3F0]">
-        <StatPill label="PTS" val={player.stats.pts.toFixed(1)} />
-        <StatPill label="REB" val={player.stats.reb.toFixed(1)} />
-        <StatPill label="AST" val={player.stats.ast.toFixed(1)} />
-        <StatPill label="FG%" val={`${player.stats.fg_pct.toFixed(1)}%`} />
-      </div>
-    </button>
-  );
-}
-
-const POSITIONS = ["All", "PG", "SG", "SF", "PF", "C"];
-const TIERS = ["All", "Generational", "All-World", "Franchise", "All-Star", "Rising"];
 
 interface PlayersProps {
   onPlayerSelect: (id: string) => void;
 }
 
+const POSITIONS = ["All", "PG", "SG", "SF", "PF", "C"];
+const TIERS = ["All", "S", "A"];
+
+const TIER_STYLES: Record<string, { color: string; bg: string }> = {
+  S: { color: "#F5A623", bg: "#F5A62320" },
+  A: { color: "#1D428A", bg: "#1D428A15" },
+};
+
+const CONF_COLORS: Record<string, string> = {
+  HIGH: "#008248",
+  MED: "#F5A623",
+  COND: "#888",
+};
+
+function PlayerCard({ player, onSelect }: { player: Player; onSelect: () => void }) {
+  const tierStyle = TIER_STYLES[player.tier] ?? { color: "#888", bg: "#88888815" };
+  const bestProp = player.props[0];
+
+  return (
+    <div
+      className="bg-white border border-[#E0E0E0] rounded-lg overflow-hidden hover:border-[#1D428A] hover:shadow-md transition-all cursor-pointer"
+      onClick={onSelect}
+      data-testid={`card-player-${player.id}`}
+    >
+      {/* Top stripe with tier */}
+      <div className="h-1" style={{ background: tierStyle.color }} />
+
+      <div className="p-4">
+        {/* Avatar + name row */}
+        <div className="flex items-start gap-3 mb-3">
+          <div
+            className="w-12 h-12 rounded-sm flex items-center justify-center font-condensed font-bold text-[16px] uppercase flex-shrink-0"
+            style={{ background: tierStyle.bg, color: tierStyle.color }}
+          >
+            {player.imageInitials}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-0.5">
+              <span className="font-condensed font-bold text-[16px] text-[#111] leading-none">{player.name}</span>
+              <span
+                className="font-condensed font-bold text-[10px] uppercase tracking-[0.5px] px-1.5 py-0.5 flex-shrink-0"
+                style={{ color: tierStyle.color, background: tierStyle.bg, borderRadius: 4 }}
+              >
+                {player.tier}-Tier
+              </span>
+            </div>
+            <div className="font-mono text-[11px] text-[#888]">
+              {player.position} · {player.teamAbbr}
+            </div>
+          </div>
+        </div>
+
+        {/* Core stats row */}
+        <div className="grid grid-cols-4 gap-2 mb-3 bg-[#F5F5F5] rounded-sm p-2">
+          {[
+            { label: "PTS", value: player.pts },
+            { label: "REB", value: player.reb },
+            { label: "AST", value: player.ast },
+            { label: "FG%", value: player.fg },
+          ].map(({ label, value }) => (
+            <div key={label} className="text-center">
+              <div className="font-mono font-bold text-[15px] text-[#111] leading-none">{value}</div>
+              <div className="font-condensed font-semibold text-[9px] uppercase text-[#AAA] tracking-[0.5px] mt-0.5">{label}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Best prop */}
+        <div className="flex items-center justify-between pt-2 border-t border-[#F0F0F0]">
+          <span className="font-sans text-[11px] text-[#888]">
+            {bestProp.label} {bestProp.recommendation} {bestProp.line}
+          </span>
+          <div className="flex items-center gap-1.5">
+            <span
+              className="font-condensed font-bold text-[9px] uppercase px-1 py-0.5"
+              style={{ color: CONF_COLORS[bestProp.conf], background: `${CONF_COLORS[bestProp.conf]}18`, borderRadius: 3 }}
+            >
+              {bestProp.conf}
+            </span>
+            <span className="font-mono font-semibold text-[11px] text-[#1D428A]">{bestProp.prob}%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function Players({ onPlayerSelect }: PlayersProps) {
   const [search, setSearch] = useState("");
-  const [posFilter, setPosFilter] = useState("All");
-  const [tierFilter, setTierFilter] = useState("All");
+  const [position, setPosition] = useState("All");
+  const [tier, setTier] = useState("All");
 
   const filtered = PLAYERS.filter((p) => {
     const matchSearch =
       p.name.toLowerCase().includes(search.toLowerCase()) ||
-      p.team.toLowerCase().includes(search.toLowerCase());
-    const matchPos = posFilter === "All" || p.position === posFilter;
-    const matchTier = tierFilter === "All" || p.tier === tierFilter;
+      p.teamAbbr.toLowerCase().includes(search.toLowerCase());
+    const matchPos = position === "All" || p.position === position;
+    const matchTier = tier === "All" || p.tier === tier;
     return matchSearch && matchPos && matchTier;
   });
 
   return (
-    <div className="min-h-screen bg-[#FAFAF8] pt-22">
-      <div className="max-w-[1200px] mx-auto px-6 py-8 space-y-6">
-        <div>
-          <h1 className="font-sans font-bold text-2xl text-[#1A1A18] tracking-tight mb-1">
+    <div className="min-h-screen bg-white">
+      {/* Page header */}
+      <div className="border-b border-[#E0E0E0] bg-[#F5F5F5]">
+        <div className="max-w-[1280px] mx-auto px-4 py-5">
+          <h1 className="font-condensed font-bold text-[28px] uppercase text-[#111] leading-none tracking-[0.5px] mb-3">
             Player Intelligence
           </h1>
-          <p className="font-sans text-sm text-[#7A7A74]">
-            Neural profiles updated after every possession across 240+ micro-actions.
-          </p>
-        </div>
 
-        {/* Search + filters */}
-        <div className="space-y-3">
-          <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#AEAEA8]" />
-            <input
-              data-testid="player-search"
-              type="text"
-              placeholder="Search any player or team..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full font-sans text-sm bg-white border border-[#E4E4E0] rounded-xl pl-10 pr-4 py-3 text-[#1A1A18] placeholder:text-[#AEAEA8] outline-none focus:border-[#1A1A18] transition-colors"
-            />
-          </div>
+          {/* Search + filters */}
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1 max-w-md">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#AAA]" />
+              <input
+                type="text"
+                placeholder="Search players or teams..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                data-testid="input-player-search"
+                className="w-full font-sans text-[13px] text-[#111] placeholder-[#AAA] bg-white border border-[#E0E0E0] focus:border-[#1D428A] rounded-sm pl-9 pr-4 py-2 outline-none transition-colors"
+              />
+            </div>
 
-          <div className="flex gap-2 flex-wrap">
-            <div className="flex items-center gap-1 flex-wrap">
-              <span className="font-mono text-[10px] text-[#AEAEA8] uppercase tracking-wide mr-1">
-                Pos
-              </span>
-              {POSITIONS.map((p) => (
+            {/* Position filter */}
+            <div className="flex items-center gap-1">
+              {POSITIONS.map((pos) => (
                 <button
-                  key={p}
-                  data-testid={`pos-filter-${p}`}
-                  onClick={() => setPosFilter(p)}
-                  className={`font-mono text-[11px] px-3 py-1 rounded-full border transition-all ${
-                    posFilter === p
-                      ? "bg-[#1A1A18] text-white border-[#1A1A18]"
-                      : "text-[#7A7A74] border-[#E4E4E0] bg-white hover-elevate"
+                  key={pos}
+                  onClick={() => setPosition(pos)}
+                  data-testid={`filter-pos-${pos}`}
+                  className={`font-condensed font-bold text-[11px] uppercase tracking-[0.5px] px-2.5 py-1.5 rounded-sm transition-all ${
+                    position === pos
+                      ? "bg-[#111] text-white"
+                      : "bg-white border border-[#E0E0E0] text-[#555] hover:border-[#111] hover:text-[#111]"
                   }`}
                 >
-                  {p}
+                  {pos}
                 </button>
               ))}
             </div>
-            <div className="flex items-center gap-1 flex-wrap">
-              <span className="font-mono text-[10px] text-[#AEAEA8] uppercase tracking-wide mr-1">
-                Tier
-              </span>
+
+            {/* Tier filter */}
+            <div className="flex items-center gap-1">
               {TIERS.map((t) => (
                 <button
                   key={t}
-                  data-testid={`tier-filter-${t}`}
-                  onClick={() => setTierFilter(t)}
-                  className={`font-mono text-[11px] px-3 py-1 rounded-full border transition-all ${
-                    tierFilter === t
-                      ? "bg-[#1A1A18] text-white border-[#1A1A18]"
-                      : "text-[#7A7A74] border-[#E4E4E0] bg-white hover-elevate"
+                  onClick={() => setTier(t)}
+                  data-testid={`filter-tier-${t}`}
+                  className={`font-condensed font-bold text-[11px] uppercase tracking-[0.5px] px-2.5 py-1.5 rounded-sm transition-all ${
+                    tier === t
+                      ? "bg-[#1D428A] text-white"
+                      : "bg-white border border-[#E0E0E0] text-[#555] hover:border-[#1D428A] hover:text-[#1D428A]"
                   }`}
                 >
-                  {t}
+                  {t === "All" ? "All Tiers" : `${t}-Tier`}
                 </button>
               ))}
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Results count */}
-        <div className="font-mono text-[11px] text-[#AEAEA8]">
-          {filtered.length} player{filtered.length !== 1 ? "s" : ""}
+      {/* Grid */}
+      <div className="max-w-[1280px] mx-auto px-4 py-5">
+        <div className="mb-3">
+          <SectionHeader title={`${filtered.length} Players`} accentColor="#1D428A" />
         </div>
 
-        {/* Player grid */}
-        <div
-          data-testid="player-grid"
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
-        >
-          {filtered.map((player) => (
-            <PlayerCard
-              key={player.id}
-              player={player}
-              onClick={() => onPlayerSelect(player.id)}
-            />
-          ))}
-        </div>
-
-        {/* Footer */}
-        <div className="text-center py-4 border-t border-[#E4E4E0]">
-          <p className="font-mono text-[10px] text-[#AEAEA8] italic">
-            Educational analysis only. Not financial advice.
-          </p>
-        </div>
+        {filtered.length === 0 ? (
+          <div className="text-center py-16">
+            <p className="font-condensed font-bold text-[18px] uppercase text-[#CCC] tracking-[0.5px]">No players found</p>
+            <p className="font-sans text-[13px] text-[#AAA] mt-1">Try adjusting your filters</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {filtered.map((player) => (
+              <PlayerCard
+                key={player.id}
+                player={player}
+                onSelect={() => onPlayerSelect(player.id)}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

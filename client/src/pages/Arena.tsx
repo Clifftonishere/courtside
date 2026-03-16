@@ -1,128 +1,194 @@
+import { useState } from "react";
 import { ARENA_ARTICLES } from "@/lib/mock-data";
+import { SectionHeader } from "@/components/SectionHeader";
+import { BookOpen, Clock } from "lucide-react";
 
-const TYPE_STYLES: Record<string, { bg: string; text: string; label: string }> = {
-  Preview: { bg: "bg-blue-50", text: "text-blue-700", label: "Preview" },
-  Verdict: { bg: "bg-green-50", text: "text-green-700", label: "Verdict" },
-  Spotlight: { bg: "bg-amber-50", text: "text-amber-700", label: "Spotlight" },
-  Rankings: { bg: "bg-purple-50", text: "text-purple-700", label: "Power Rankings" },
+const CATEGORY_COLORS: Record<string, string> = {
+  "DEEP DIVE": "#1D428A",
+  "ANALYSIS": "#1D428A",
+  "SCOUTING": "#008248",
+  "POWER RANKINGS": "#C8102E",
+  "FILM ROOM": "#888",
 };
 
-function ArticleTypeBadge({ type }: { type: string }) {
-  const s = TYPE_STYLES[type] ?? { bg: "bg-gray-50", text: "text-gray-600", label: type };
-  return (
-    <span className={`font-mono text-[10px] font-semibold uppercase tracking-widest px-2 py-0.5 rounded ${s.bg} ${s.text}`}>
-      {s.label}
-    </span>
-  );
-}
-
 export function Arena() {
-  const featured = ARENA_ARTICLES[0];
-  const rest = ARENA_ARTICLES.slice(1);
+  const [email, setEmail] = useState("");
+  const [subscribed, setSubscribed] = useState(false);
+
+  const feature = ARENA_ARTICLES.find((a) => a.isFeature);
+  const secondary = ARENA_ARTICLES.filter((a) => !a.isFeature);
 
   return (
-    <div className="min-h-screen bg-[#FAFAF8] pt-22">
-      <div className="max-w-[1200px] mx-auto px-6 py-8 space-y-10">
-
-        <div>
-          <h1 className="font-sans font-bold text-2xl text-[#1A1A18] tracking-tight mb-1">
-            The Arena
-          </h1>
-          <p className="font-sans text-sm text-[#7A7A74]">
-            Editorial analysis, game verdicts, and deep dives from the Courtside desk.
+    <div className="min-h-screen bg-white">
+      {/* Page header */}
+      <div className="border-b border-[#E0E0E0] bg-[#111111]">
+        <div className="max-w-[1280px] mx-auto px-4 py-6">
+          <div className="flex items-center gap-2 mb-1">
+            <BookOpen size={18} className="text-[#F5A623]" />
+            <h1 className="font-condensed font-bold text-[28px] uppercase text-white leading-none tracking-[0.5px]">
+              The Arena
+            </h1>
+          </div>
+          <p className="font-sans text-[13px] text-[#888]">
+            Deep dives, film room breakdowns, and editorial analysis from the Courtside desk.
           </p>
         </div>
+      </div>
 
-        {/* Featured article */}
-        <section data-testid="featured-article">
-          <div className="border border-[#E4E4E0] rounded-xl bg-white overflow-hidden cursor-pointer hover-elevate transition-all">
-            <div className="p-6 md:p-8">
-              <div className="flex items-center gap-3 mb-4">
-                <ArticleTypeBadge type={featured.type} />
-                <span className="font-mono text-[11px] text-[#AEAEA8]">{featured.date}</span>
-                <span className="font-mono text-[11px] text-[#AEAEA8]">{featured.readTime}</span>
+      <div className="max-w-[1280px] mx-auto px-4 py-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Main content */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Feature article */}
+            {feature && (
+              <div>
+                <SectionHeader title="Featured" />
+                <div
+                  className="bg-[#111111] rounded-lg overflow-hidden cursor-pointer hover:opacity-95 transition-opacity"
+                  data-testid={`card-article-${feature.id}`}
+                >
+                  <div className="p-6">
+                    <div className="flex items-center gap-2 mb-3">
+                      <span
+                        className="font-condensed font-bold text-[10px] uppercase tracking-[0.5px] px-1.5 py-0.5 text-white"
+                        style={{ background: CATEGORY_COLORS[feature.category] ?? "#888", borderRadius: 4 }}
+                      >
+                        {feature.category}
+                      </span>
+                      <div className="flex items-center gap-1 text-[#666]">
+                        <Clock size={10} />
+                        <span className="font-mono text-[10px]">{feature.readTime}</span>
+                      </div>
+                    </div>
+                    <h2 className="font-condensed font-bold text-[26px] text-white leading-tight mb-3">
+                      {feature.title}
+                    </h2>
+                    <p className="font-sans text-[14px] text-[#888] leading-relaxed mb-4">
+                      {feature.excerpt}
+                    </p>
+                    <button className="font-condensed font-bold text-[12px] uppercase tracking-[0.5px] bg-[#1D428A] text-white px-4 py-2 rounded-sm hover:bg-[#163570] transition-colors">
+                      Read Article
+                    </button>
+                  </div>
+                </div>
               </div>
-              <h2 className="font-sans font-bold text-2xl text-[#1A1A18] tracking-tight leading-tight mb-3">
-                {featured.headline}
-              </h2>
-              <p className="font-sans text-[#4A4A46] leading-relaxed max-w-2xl">
-                {featured.excerpt}
-              </p>
-              <div className="mt-5 flex items-center gap-2">
-                <span className="font-mono text-xs text-[#AEAEA8]">{featured.author}</span>
-                <span className="font-mono text-xs text-[#AEAEA8]">·</span>
-                <span className="font-sans text-xs text-[#16a34a] font-medium cursor-pointer">
-                  Read analysis →
-                </span>
+            )}
+
+            {/* Secondary articles */}
+            <div>
+              <SectionHeader title="Latest Analysis" accentColor="#1D428A" />
+              <div className="space-y-0 bg-white border border-[#E0E0E0] rounded-lg overflow-hidden">
+                {secondary.map((article, i) => (
+                  <div
+                    key={article.id}
+                    className={`flex items-start gap-4 p-4 hover:bg-[#F5F5F5] cursor-pointer transition-colors ${
+                      i < secondary.length - 1 ? "border-b border-[#F0F0F0]" : ""
+                    }`}
+                    data-testid={`card-article-${article.id}`}
+                  >
+                    {/* Category tag */}
+                    <div className="flex-shrink-0 mt-0.5">
+                      <span
+                        className="font-condensed font-bold text-[9px] uppercase tracking-[0.5px] px-1.5 py-0.5 text-white inline-block"
+                        style={{ background: CATEGORY_COLORS[article.category] ?? "#888", borderRadius: 4 }}
+                      >
+                        {article.category}
+                      </span>
+                    </div>
+
+                    {/* Content */}
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-sans font-semibold text-[14px] text-[#111] leading-snug mb-1">
+                        {article.title}
+                      </h3>
+                      <p className="font-sans text-[12px] text-[#888] leading-relaxed line-clamp-2">
+                        {article.excerpt}
+                      </p>
+                    </div>
+
+                    {/* Read time */}
+                    <div className="flex-shrink-0 flex items-center gap-1 text-[#CCC]">
+                      <Clock size={10} />
+                      <span className="font-mono text-[10px]">{article.readTime}</span>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
-        </section>
 
-        {/* Article grid */}
-        <section data-testid="article-grid">
-          <div className="font-mono text-[11px] text-[#AEAEA8] uppercase tracking-widest mb-4">
-            Recent
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {rest.map((article) => (
-              <div
-                key={article.id}
-                data-testid={`article-card-${article.id}`}
-                className="border border-[#E4E4E0] rounded-xl bg-white p-5 cursor-pointer hover-elevate transition-all flex flex-col"
-              >
-                <div className="flex items-center gap-2 mb-3">
-                  <ArticleTypeBadge type={article.type} />
-                </div>
-                <h3 className="font-sans font-semibold text-[#1A1A18] text-sm leading-tight mb-2 flex-1">
-                  {article.headline}
+          {/* Sidebar */}
+          <div className="space-y-5">
+            {/* Newsletter */}
+            <div className="bg-[#1D428A] rounded-lg overflow-hidden">
+              <div className="p-5">
+                <h3 className="font-condensed font-bold text-[20px] uppercase text-white leading-tight mb-2 tracking-[0.5px]">
+                  The Courtside Edge
                 </h3>
-                <p className="font-sans text-xs text-[#7A7A74] leading-relaxed line-clamp-3 mb-4">
-                  {article.excerpt}
+                <p className="font-sans text-[13px] text-[#9bb5e8] leading-relaxed mb-4">
+                  Daily analysis, model outputs, and the sharpest NBA intelligence — delivered before tip-off.
                 </p>
-                <div className="flex items-center justify-between">
-                  <span className="font-mono text-[10px] text-[#AEAEA8]">{article.date}</span>
-                  <span className="font-mono text-[10px] text-[#AEAEA8]">{article.readTime}</span>
-                </div>
+
+                {subscribed ? (
+                  <div className="bg-white/10 rounded-sm px-4 py-3 text-center">
+                    <p className="font-condensed font-bold text-[13px] uppercase text-white tracking-[0.5px]">
+                      You're in. Check your inbox.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <input
+                      type="email"
+                      placeholder="your@email.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      data-testid="input-newsletter-email"
+                      className="w-full font-sans text-[13px] text-white placeholder-[#9bb5e8] bg-white/10 border border-white/20 focus:border-white rounded-sm px-3 py-2 outline-none transition-colors"
+                    />
+                    <button
+                      onClick={() => { if (email) setSubscribed(true); }}
+                      data-testid="btn-newsletter-subscribe"
+                      className="w-full font-condensed font-bold text-[12px] uppercase tracking-[0.5px] bg-[#C8102E] text-white py-2.5 rounded-sm hover:bg-[#a50d27] transition-colors"
+                    >
+                      Get the Edge — Free
+                    </button>
+                  </div>
+                )}
               </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Newsletter CTA */}
-        <section data-testid="newsletter-cta">
-          <div className="border border-[#E4E4E0] rounded-xl bg-[#1A1A18] p-8 text-center">
-            <div className="font-mono text-[11px] text-white/40 uppercase tracking-widest mb-2">
-              The Daily Edge
             </div>
-            <h3 className="font-sans font-bold text-white text-xl tracking-tight mb-2">
-              Get the pre-game breakdown every day at noon.
-            </h3>
-            <p className="font-sans text-sm text-white/60 mb-6 max-w-md mx-auto">
-              Model picks, key props, and market reads — delivered before tip-off. Join 14,200 subscribers.
-            </p>
-            <div className="flex items-center gap-3 max-w-sm mx-auto">
-              <input
-                type="email"
-                placeholder="your@email.com"
-                data-testid="newsletter-input"
-                className="flex-1 font-mono text-sm bg-white/10 border border-white/20 rounded-lg px-4 py-2.5 text-white placeholder:text-white/30 outline-none focus:border-white/40"
-              />
-              <button
-                data-testid="newsletter-submit"
-                className="bg-white text-[#1A1A18] font-sans font-semibold text-sm px-4 py-2.5 rounded-lg shrink-0 hover-elevate"
-              >
-                Subscribe
-              </button>
+
+            {/* Categories */}
+            <div className="bg-white border border-[#E0E0E0] rounded-lg overflow-hidden">
+              <div className="px-4 py-3 border-b border-[#E0E0E0] bg-[#F5F5F5]">
+                <SectionHeader title="Categories" className="mb-0" />
+              </div>
+              <div className="divide-y divide-[#F5F5F5]">
+                {Object.entries(CATEGORY_COLORS).map(([cat, color]) => (
+                  <button
+                    key={cat}
+                    className="w-full flex items-center justify-between px-4 py-3 hover:bg-[#F5F5F5] transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full" style={{ background: color }} />
+                      <span className="font-condensed font-semibold text-[12px] uppercase text-[#444] tracking-[0.5px]">{cat}</span>
+                    </div>
+                    <span className="font-mono text-[11px] text-[#AAA]">
+                      {Math.floor(Math.random() * 12) + 2}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* About */}
+            <div className="bg-[#F5F5F5] border border-[#E0E0E0] rounded-lg p-4">
+              <h4 className="font-condensed font-bold text-[13px] uppercase text-[#111] tracking-[0.5px] mb-2">About Courtside</h4>
+              <p className="font-sans text-[12px] text-[#666] leading-relaxed">
+                Courtside applies machine learning and advanced analytics to NBA predictions. 
+                <span className="font-semibold text-[#444]"> Educational analysis only — not financial advice.</span>
+              </p>
             </div>
           </div>
-        </section>
-
-        {/* Footer */}
-        <div className="text-center py-4 border-t border-[#E4E4E0]">
-          <p className="font-mono text-[10px] text-[#AEAEA8] italic">
-            Educational analysis only. Not financial advice. Courtside does not facilitate real-money wagering.
-          </p>
         </div>
       </div>
     </div>
