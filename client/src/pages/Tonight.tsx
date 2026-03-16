@@ -1,4 +1,4 @@
-import { GAMES, TRENDING_INSIGHTS } from "@/lib/mock-data";
+import { GAMES, TRENDING_INSIGHTS, ACTIVE_POLLS } from "@/lib/mock-data";
 import { AskBar } from "@/components/AnalysisCard";
 import { GameCard } from "@/components/GameCard";
 import { HotTakes } from "@/components/HotTakes";
@@ -6,7 +6,6 @@ import { Headlines } from "@/components/Headlines";
 import { StatLeaders } from "@/components/StatLeaders";
 import { PollCard } from "@/components/PollCard";
 import { SectionHeader } from "@/components/SectionHeader";
-import { ACTIVE_POLLS } from "@/lib/mock-data";
 
 const CONF_COLORS: Record<string, string> = {
   HIGH: "#008248",
@@ -14,9 +13,12 @@ const CONF_COLORS: Record<string, string> = {
   COND: "#888",
 };
 
+const today = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+
 export function Tonight() {
   return (
     <div className="min-h-screen bg-white">
+
       {/* Ask bar hero */}
       <section className="border-b border-[#E0E0E0] bg-[#F5F5F5]">
         <div className="max-w-[1280px] mx-auto px-4 py-5">
@@ -25,22 +27,10 @@ export function Tonight() {
               Tonight's Intelligence
             </h1>
             <p className="font-sans text-[13px] text-[#888] mt-1">
-              AI-powered game analysis for March 16, 2026 · 6 games on the slate
+              AI-powered game analysis for {today} · {GAMES.length} games on the slate
             </p>
           </div>
           <AskBar />
-        </div>
-      </section>
-
-      {/* Games list */}
-      <section className="py-5 border-b border-[#E0E0E0]">
-        <div className="max-w-[1280px] mx-auto px-4">
-          <SectionHeader title="Tonight's Games" />
-          <div className="space-y-3">
-            {GAMES.map((game) => (
-              <GameCard key={game.id} game={game} />
-            ))}
-          </div>
         </div>
       </section>
 
@@ -69,31 +59,42 @@ export function Tonight() {
         </div>
       </section>
 
-      {/* Active Polls */}
+      {/* Two-column: Games + Courtside Calls */}
       <section className="py-5 border-b border-[#E0E0E0]">
         <div className="max-w-[1280px] mx-auto px-4">
-          <SectionHeader title="Courtside Calls — Live" />
-          <p className="font-sans text-[12px] text-[#888] mb-3">
-            Vote with the analysis or fade it. Earn points when you're right.
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {ACTIVE_POLLS.map((poll) => (
-              <PollCard key={poll.id} poll={poll} compact />
-            ))}
+          <div className="flex flex-col md:flex-row gap-6">
+
+            {/* Left: Tonight's Games */}
+            <div className="w-full md:w-[55%]">
+              <SectionHeader title="Tonight's Games" />
+              <div className="space-y-3">
+                {GAMES.map((game) => (
+                  <GameCard key={game.id} game={game} />
+                ))}
+              </div>
+            </div>
+
+            {/* Right: Courtside Calls */}
+            <div className="w-full md:w-[45%]">
+              <SectionHeader title="Courtside Calls — Live" />
+              <p className="font-sans text-[12px] text-[#888] mb-3">
+                Vote with the analysis or fade it. Earn points when you're right.
+              </p>
+              <div className="space-y-3">
+                {ACTIVE_POLLS.map((poll) => (
+                  <PollCard key={poll.id} poll={poll} compact />
+                ))}
+              </div>
+            </div>
+
           </div>
         </div>
       </section>
 
-      {/* Hot Takes */}
       <HotTakes />
-
-      {/* Headlines */}
       <Headlines />
-
-      {/* Stat Leaders */}
       <StatLeaders />
 
-      {/* Footer disclaimer */}
       <div className="py-6 border-t border-[#E0E0E0] bg-[#F5F5F5]">
         <div className="max-w-[1280px] mx-auto px-4 text-center">
           <p className="font-sans text-[11px] text-[#AAA]">

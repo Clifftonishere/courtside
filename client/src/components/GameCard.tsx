@@ -2,11 +2,12 @@ import { useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer } from "recharts";
 import type { ConfTier } from "@/lib/mock-data";
+import { TeamLogo } from "@/components/TeamLogo";
 
 type Game = {
   id: string;
-  away: { abbr: string; name: string; record: string; spread: string; ml: string };
-  home: { abbr: string; name: string; record: string; spread: string; ml: string };
+  away: { abbr: string; name: string; record: string; teamId?: number; spread: string; ml: string };
+  home: { abbr: string; name: string; record: string; teamId?: number; spread: string; ml: string };
   tipoff: string;
   network: string;
   status: string;
@@ -89,8 +90,11 @@ export function GameCard({ game }: GameCardProps) {
         <div className="flex items-center justify-between">
           {/* Away team */}
           <div className="flex-1 flex flex-col items-start gap-0.5">
-            <div className="font-condensed font-bold text-[22px] text-[#111] uppercase leading-none">
-              {game.away.abbr}
+            <div className="flex items-center gap-2">
+              <TeamLogo abbr={game.away.abbr} teamId={game.away.teamId || 0} size={28} />
+              <div className="font-condensed font-bold text-[20px] text-[#111] uppercase leading-none">
+                {game.away.abbr}
+              </div>
             </div>
             <div className="font-mono text-[11px] text-[#888]">{game.away.record}</div>
           </div>
@@ -115,8 +119,11 @@ export function GameCard({ game }: GameCardProps) {
 
           {/* Home team */}
           <div className="flex-1 flex flex-col items-end gap-0.5">
-            <div className="font-condensed font-bold text-[22px] text-[#111] uppercase leading-none">
-              {game.home.abbr}
+            <div className="flex items-center gap-2">
+              <div className="font-condensed font-bold text-[20px] text-[#111] uppercase leading-none">
+                {game.home.abbr}
+              </div>
+              <TeamLogo abbr={game.home.abbr} teamId={game.home.teamId || 0} size={28} />
             </div>
             <div className="font-mono text-[11px] text-[#888]">{game.home.record}</div>
           </div>
