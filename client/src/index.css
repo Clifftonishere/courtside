@@ -2,57 +2,60 @@
 @tailwind components;
 @tailwind utilities;
 
-/* LIGHT MODE */
+/* ESPN/NBA.com-aligned design system */
 :root {
   --button-outline: rgba(0,0,0, .10);
   --badge-outline: rgba(0,0,0, .05);
   --opaque-button-border-intensity: -8;
   --elevate-1: rgba(0,0,0, .03);
-  --elevate-2: rgba(0,0,0, .08);
+  --elevate-2: rgba(0,0,0, .07);
 
-  /* Warm off-white background */
-  --background: 60 17% 97%;
-  --foreground: 60 4% 10%;
-  --border: 60 5% 89%;
+  /* Pure white ESPN-style background */
+  --background: 0 0% 100%;
+  --foreground: 0 0% 7%;
+  --border: 0 0% 88%;
   --card: 0 0% 100%;
-  --card-foreground: 60 4% 10%;
-  --card-border: 60 5% 89%;
-  --sidebar: 60 9% 95%;
-  --sidebar-foreground: 60 4% 10%;
-  --sidebar-border: 60 5% 89%;
-  --sidebar-primary: 142 71% 36%;
+  --card-foreground: 0 0% 7%;
+  --card-border: 0 0% 88%;
+  --sidebar: 0 0% 96%;
+  --sidebar-foreground: 0 0% 7%;
+  --sidebar-border: 0 0% 88%;
+  --sidebar-primary: 220 64% 33%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 60 9% 93%;
-  --sidebar-accent-foreground: 60 4% 10%;
-  --sidebar-ring: 142 71% 36%;
+  --sidebar-accent: 0 0% 94%;
+  --sidebar-accent-foreground: 0 0% 7%;
+  --sidebar-ring: 220 64% 33%;
   --popover: 0 0% 100%;
-  --popover-foreground: 60 4% 10%;
-  --popover-border: 60 5% 89%;
-  --primary: 142 71% 36%;
+  --popover-foreground: 0 0% 7%;
+  --popover-border: 0 0% 88%;
+  /* NBA Blue as primary */
+  --primary: 220 64% 33%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 60 9% 95%;
-  --secondary-foreground: 60 4% 29%;
-  --muted: 60 9% 95%;
-  --muted-foreground: 60 3% 47%;
-  --accent: 60 9% 93%;
-  --accent-foreground: 60 4% 10%;
-  --destructive: 0 72% 51%;
+  --secondary: 0 0% 96%;
+  --secondary-foreground: 0 0% 27%;
+  --muted: 0 0% 96%;
+  --muted-foreground: 0 0% 53%;
+  --accent: 0 0% 94%;
+  --accent-foreground: 0 0% 7%;
+  /* NBA Red as destructive */
+  --destructive: 349 83% 42%;
   --destructive-foreground: 0 0% 100%;
-  --input: 60 5% 89%;
-  --ring: 142 71% 36%;
-  --chart-1: 142 71% 36%;
-  --chart-2: 43 96% 56%;
-  --chart-3: 220 91% 54%;
-  --chart-4: 0 72% 51%;
-  --chart-5: 262 80% 55%;
+  --input: 0 0% 88%;
+  --ring: 220 64% 33%;
+  --chart-1: 220 64% 33%;
+  --chart-2: 37 91% 55%;
+  --chart-3: 152 100% 26%;
+  --chart-4: 349 83% 42%;
+  --chart-5: 270 70% 50%;
 
-  --font-sans: 'Outfit', sans-serif;
+  --font-sans: 'Source Sans 3', sans-serif;
   --font-serif: Georgia, serif;
-  --font-mono: 'JetBrains Mono', monospace;
-  --radius: .5rem;
-  --shadow-2xs: 0px 1px 2px 0px rgba(0,0,0,0.04);
-  --shadow-xs: 0px 1px 3px 0px rgba(0,0,0,0.06);
-  --shadow-sm: 0px 2px 4px 0px rgba(0,0,0,0.06);
+  --font-mono: 'IBM Plex Mono', monospace;
+  --font-condensed: 'Barlow Condensed', sans-serif;
+  --radius: .375rem; /* 6px — ESPN uses tight rounding */
+  --shadow-2xs: 0px 1px 2px 0px rgba(0,0,0,0.05);
+  --shadow-xs: 0px 1px 3px 0px rgba(0,0,0,0.07);
+  --shadow-sm: 0px 2px 4px 0px rgba(0,0,0,0.07);
   --shadow: 0px 2px 8px 0px rgba(0,0,0,0.08);
   --shadow-md: 0px 4px 12px 0px rgba(0,0,0,0.08);
   --shadow-lg: 0px 8px 24px 0px rgba(0,0,0,0.10);
@@ -85,40 +88,40 @@
   --elevate-1: rgba(255,255,255, .04);
   --elevate-2: rgba(255,255,255, .09);
 
-  --background: 240 11% 4%;
+  --background: 0 0% 7%;
   --foreground: 0 0% 96%;
-  --border: 240 6% 14%;
-  --card: 240 8% 7%;
+  --border: 0 0% 16%;
+  --card: 0 0% 10%;
   --card-foreground: 0 0% 90%;
-  --card-border: 240 6% 14%;
-  --sidebar: 240 8% 7%;
+  --card-border: 0 0% 16%;
+  --sidebar: 0 0% 10%;
   --sidebar-foreground: 0 0% 90%;
-  --sidebar-border: 240 6% 14%;
-  --sidebar-primary: 142 71% 45%;
+  --sidebar-border: 0 0% 16%;
+  --sidebar-primary: 220 64% 55%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 240 6% 12%;
+  --sidebar-accent: 0 0% 14%;
   --sidebar-accent-foreground: 0 0% 90%;
-  --sidebar-ring: 142 71% 45%;
-  --popover: 240 8% 7%;
+  --sidebar-ring: 220 64% 55%;
+  --popover: 0 0% 10%;
   --popover-foreground: 0 0% 90%;
-  --popover-border: 240 6% 14%;
-  --primary: 142 71% 45%;
+  --popover-border: 0 0% 16%;
+  --primary: 220 64% 55%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 240 6% 12%;
+  --secondary: 0 0% 14%;
   --secondary-foreground: 0 0% 80%;
-  --muted: 240 6% 12%;
+  --muted: 0 0% 14%;
   --muted-foreground: 0 0% 55%;
-  --accent: 240 6% 14%;
+  --accent: 0 0% 16%;
   --accent-foreground: 0 0% 90%;
-  --destructive: 0 70% 55%;
+  --destructive: 349 83% 55%;
   --destructive-foreground: 0 0% 100%;
-  --input: 240 6% 18%;
-  --ring: 142 71% 45%;
-  --chart-1: 142 71% 45%;
-  --chart-2: 43 96% 56%;
-  --chart-3: 220 91% 60%;
-  --chart-4: 0 70% 55%;
-  --chart-5: 262 80% 65%;
+  --input: 0 0% 20%;
+  --ring: 220 64% 55%;
+  --chart-1: 220 64% 55%;
+  --chart-2: 37 91% 55%;
+  --chart-3: 152 100% 40%;
+  --chart-4: 349 83% 55%;
+  --chart-5: 270 70% 60%;
 
   --shadow-2xs: 0px 1px 2px 0px rgba(0,0,0,0.3);
   --shadow-xs: 0px 1px 3px 0px rgba(0,0,0,0.4);
@@ -131,23 +134,20 @@
 }
 
 @layer base {
-  * {
-    @apply border-border;
-  }
-
-  body {
-    @apply font-sans antialiased bg-background text-foreground;
-  }
+  * { @apply border-border; }
+  body { @apply font-sans antialiased bg-background text-foreground; }
 }
 
+/* Ticker animation */
 @keyframes ticker-scroll {
   0% { transform: translateX(0); }
   100% { transform: translateX(-50%); }
 }
 
+/* Live dot pulse — NBA red */
 @keyframes live-pulse {
   0%, 100% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.8); opacity: 0; }
+  50% { transform: scale(2); opacity: 0; }
 }
 
 @keyframes shimmer {
@@ -156,7 +156,7 @@
 }
 
 @keyframes fade-up {
-  from { opacity: 0; transform: translateY(12px); }
+  from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
@@ -165,44 +165,40 @@
   to { opacity: 1; }
 }
 
-.ticker-track {
-  animation: ticker-scroll 30s linear infinite;
-}
-
-.ticker-track:hover {
-  animation-play-state: paused;
-}
-
-.live-dot {
-  animation: live-pulse 1.5s ease-in-out infinite;
-}
+.ticker-track { animation: ticker-scroll 35s linear infinite; }
+.ticker-track:hover { animation-play-state: paused; }
+.live-dot { animation: live-pulse 1.4s ease-in-out infinite; }
 
 .shimmer {
-  background: linear-gradient(90deg, #f0f0ed 25%, #e8e8e4 50%, #f0f0ed 75%);
+  background: linear-gradient(90deg, #f0f0f0 25%, #e4e4e4 50%, #f0f0f0 75%);
   background-size: 1000px 100%;
   animation: shimmer 1.5s infinite linear;
 }
 
-.fade-up {
-  animation: fade-up 0.4s ease-out forwards;
-}
-
-.stream-char {
-  animation: stream-in 0.05s ease-out forwards;
-  opacity: 0;
-}
+.fade-up { animation: fade-up 0.35s ease-out forwards; }
 
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
+/* Horizontal snap scroll for hot takes */
+.snap-scroll {
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+}
+.snap-card { scroll-snap-align: start; }
+
 @layer utilities {
   input[type="search"]::-webkit-search-cancel-button { @apply hidden; }
+  [contenteditable][data-placeholder]:empty::before {
+    content: attr(data-placeholder);
+    color: hsl(var(--muted-foreground));
+    pointer-events: none;
+  }
 
   .no-default-hover-elevate {}
   .no-default-active-elevate {}
 
-  .toggle-elevate::before,
-  .toggle-elevate-2::before {
+  .toggle-elevate::before, .toggle-elevate-2::before {
     content: "";
     pointer-events: none;
     position: absolute;
@@ -211,19 +207,13 @@
     z-index: -1;
   }
 
-  .toggle-elevate.toggle-elevated::before {
-    background-color: var(--elevate-2);
-  }
-
+  .toggle-elevate.toggle-elevated::before { background-color: var(--elevate-2); }
   .border.toggle-elevate::before { inset: -1px; }
 
   .hover-elevate:not(.no-default-hover-elevate),
   .active-elevate:not(.no-default-active-elevate),
   .hover-elevate-2:not(.no-default-hover-elevate),
-  .active-elevate-2:not(.no-default-active-elevate) {
-    position: relative;
-    z-index: 0;
-  }
+  .active-elevate-2:not(.no-default-active-elevate) { position: relative; z-index: 0; }
 
   .hover-elevate:not(.no-default-hover-elevate)::after,
   .active-elevate:not(.no-default-active-elevate)::after,
@@ -238,19 +228,13 @@
   }
 
   .hover-elevate:hover:not(.no-default-hover-elevate)::after,
-  .active-elevate:active:not(.no-default-active-elevate)::after {
-    background-color: var(--elevate-1);
-  }
+  .active-elevate:active:not(.no-default-active-elevate)::after { background-color: var(--elevate-1); }
 
   .hover-elevate-2:hover:not(.no-default-hover-elevate)::after,
-  .active-elevate-2:active:not(.no-default-active-elevate)::after {
-    background-color: var(--elevate-2);
-  }
+  .active-elevate-2:active:not(.no-default-active-elevate)::after { background-color: var(--elevate-2); }
 
   .border.hover-elevate:not(.no-hover-interaction-elevate)::after,
   .border.active-elevate:not(.no-active-interaction-elevate)::after,
   .border.hover-elevate-2:not(.no-hover-interaction-elevate)::after,
-  .border.active-elevate-2:not(.no-active-interaction-elevate)::after {
-    inset: -1px;
-  }
+  .border.active-elevate-2:not(.no-active-interaction-elevate)::after { inset: -1px; }
 }

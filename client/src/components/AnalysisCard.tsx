@@ -1,297 +1,269 @@
 import { useState, useEffect } from "react";
 import { MOCK_ANALYSES } from "@/lib/mock-data";
-import { AlertTriangle, TrendingUp, TrendingDown } from "lucide-react";
+import { Zap, CheckCircle, AlertCircle, Plus } from "lucide-react";
 
-type Analysis = typeof MOCK_ANALYSES["default"];
+type ConfTier = "HIGH" | "MED" | "COND";
 
-const LOADING_STEPS = [
-  "Parsing your input",
-  "Identifying players & teams",
-  "Loading 77,738 game logs",
-  "Pulling historical splits",
-  "Analyzing live market signals",
-  "Running confidence model",
-  "Generating EDGE signal",
-];
+type Analysis = {
+  id: string;
+  query: string;
+  steps: string[];
+  result: {
+    title: string;
+    body: string;
+    confidence: ConfTier;
+    prob: number;
+    signal: string;
+    pollProposition: string;
+    verdictLabel: string;
+  };
+};
 
-function ProbBadge({ prob, lean }: { prob: number; lean: string }) {
-  const color = prob > 55 ? "#16a34a" : prob < 45 ? "#dc2626" : "#d97706";
+const CONF_STYLES: Record<ConfTier, { bg: string; text: string; border: string }> = {
+  HIGH: { bg: "bg-[#008248]", text: "text-white", border: "border-[#008248]" },
+  MED: { bg: "bg-[#F5A623]", text: "text-[#111]", border: "border-[#F5A623]" },
+  COND: { bg: "bg-[#888]", text: "text-white", border: "border-[#888]" },
+};
+
+const CONF_LABEL_COLOR: Record<ConfTier, string> = {
+  HIGH: "#008248",
+  MED: "#F5A623",
+  COND: "#888",
+};
+
+function ConfBadge({ tier }: { tier: ConfTier }) {
+  const s = CONF_STYLES[tier];
   return (
-    <div className="text-right">
-      <div className="font-mono font-bold leading-none" style={{ fontSize: 32, color }}>
-        {prob}%
-      </div>
-      <div
-        className="font-mono text-xs font-semibold mt-1 uppercase tracking-wider"
-        style={{ color }}
-      >
-        LEAN {lean}
-      </div>
-    </div>
+    <span
+      className={`font-condensed font-bold text-[10px] uppercase tracking-[0.5px] px-1.5 py-0.5 rounded-sm ${s.bg} ${s.text}`}
+      style={{ borderRadius: 4 }}
+    >
+      {tier}
+    </span>
   );
 }
 
-function ConfBadge({ conf }: { conf: string }) {
-  const cfg = {
-    HIGH: { bg: "#f0fdf4", text: "#16a34a", border: "#bbf7d0" },
-    MED: { bg: "#fffbeb", text: "#d97706", border: "#fde68a" },
-    COND: { bg: "#f9fafb", text: "#6b7280", border: "#e5e7eb" },
-  }[conf] ?? { bg: "#f9fafb", text: "#6b7280", border: "#e5e7eb" };
+function LoadingStep({ step, index, currentStep }: { step: string; index: number; currentStep: number }) {
+  const isDone = index < currentStep;
+  const isActive = index === currentStep;
 
   return (
-    <span
-      className="font-mono text-[10px] font-semibold uppercase tracking-widest px-2 py-0.5 rounded border"
-      style={{ background: cfg.bg, color: cfg.text, borderColor: cfg.border }}
-    >
-      {conf}
-    </span>
+    <div className={`flex items-center gap-2.5 py-1.5 transition-all ${isActive ? "opacity-100" : isDone ? "opacity-60" : "opacity-20"}`}>
+      <div className="w-4 h-4 flex-shrink-0 flex items-center justify-center">
+        {isDone ? (
+          <CheckCircle size={14} className="text-[#008248]" />
+        ) : isActive ? (
+          <div className="w-3 h-3 rounded-full border-2 border-[#1D428A] border-t-transparent animate-spin" />
+        ) : (
+          <div className="w-2 h-2 rounded-full bg-[#ddd]" />
+        )}
+      </div>
+      <span className={`font-sans text-[12px] ${isActive ? "text-[#111] font-semibold" : isDone ? "text-[#555]" : "text-[#bbb]"}`}>
+        {step}
+      </span>
+    </div>
   );
 }
 
 interface AnalysisCardProps {
   analysis: Analysis;
+  onCreatePoll?: (proposition: string) => void;
 }
 
-export function AnalysisCard({ analysis }: AnalysisCardProps) {
-  const [betAmount, setBetAmount] = useState(25);
+export function AnalysisCard({ analysis, onCreatePoll }: AnalysisCardProps) {
+  const [showPollCreated, setShowPollCreated] = useState(false);
+
+  const handleCreatePoll = () => {
+    setShowPollCreated(true);
+    if (onCreatePoll) onCreatePoll(analysis.result.pollProposition);
+  };
 
   return (
-    <div
-      data-testid="analysis-card"
-      className="border border-[#E4E4E0] rounded-xl overflow-hidden bg-white fade-up"
-    >
+    <div className="bg-white border border-[#E0E0E0] rounded-lg overflow-hidden fade-up">
       {/* Header */}
-      <div className="p-5 flex items-start justify-between gap-4 border-b border-[#E4E4E0]">
-        <div>
-          <div className="font-mono text-[10px] text-[#AEAEA8] uppercase tracking-widest mb-1">
-            Analysis
-          </div>
-          <div className="font-sans font-semibold text-[#1A1A18] text-lg leading-tight">
-            {analysis.player} — {analysis.stat} {analysis.threshold}
-          </div>
-          <div className="font-mono text-xs text-[#7A7A74] mt-0.5">{analysis.game}</div>
-        </div>
-        <ProbBadge prob={analysis.prob} lean={analysis.lean} />
-      </div>
-
-      {/* Splits */}
-      <div className="border-b border-[#E4E4E0]">
-        <div className="flex">
-          {analysis.splits.map((s, i) => (
-            <div
-              key={i}
-              className="flex-1 px-4 py-3 text-center border-r border-[#E4E4E0] last:border-r-0"
-            >
-              <div className="font-mono text-xs text-[#AEAEA8] uppercase tracking-wide mb-1">
-                {s.label}
-              </div>
-              <div className="font-mono font-semibold text-sm text-[#1A1A18]">{s.val}</div>
-              <div className="font-mono text-[10px] text-[#AEAEA8] mt-0.5">{s.count}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Edge Signal */}
-      <div className="bg-[#F3F3F0] px-5 py-4 border-b border-[#E4E4E0]">
-        <div className="font-mono text-[10px] text-[#AEAEA8] uppercase tracking-widest mb-2">
-          Edge Signal
-        </div>
-        <p className="font-sans text-sm text-[#4A4A46] leading-relaxed">{analysis.signal}</p>
-      </div>
-
-      {/* Last 5 + Market */}
-      <div className="grid grid-cols-2 border-b border-[#E4E4E0]">
-        {/* Last 5 */}
-        <div className="p-4 border-r border-[#E4E4E0]">
-          <div className="font-mono text-[10px] text-[#AEAEA8] uppercase tracking-widest mb-3">
-            Last 5 Games
-          </div>
-          <div className="space-y-1.5">
-            {analysis.lastFive.map((g, i) => (
-              <div key={i} className="flex items-center justify-between">
-                <span className="font-mono text-[11px] text-[#7A7A74]">
-                  {g.date} {g.opp}
-                </span>
-                <div className="flex items-center gap-2">
-                  <span className="font-mono text-[11px] font-semibold text-[#1A1A18]">
-                    {g.result}
-                  </span>
-                  <span
-                    className="font-mono text-[10px] font-semibold"
-                    style={{ color: g.hit ? "#16a34a" : "#dc2626" }}
-                  >
-                    {g.hit ? "HIT" : "MISS"}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Market Comparison */}
-        <div className="p-4">
-          <div className="font-mono text-[10px] text-[#AEAEA8] uppercase tracking-widest mb-3">
-            Market Comparison
-          </div>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="font-mono text-[11px] text-[#7A7A74]">Courtside</span>
-              <span className="font-mono text-[11px] font-semibold text-[#1A1A18]">
-                {analysis.market.courtside}.0%
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="font-mono text-[11px] text-[#7A7A74]">FanDuel</span>
-              <span className="font-mono text-[11px] font-semibold text-[#1A1A18]">
-                {analysis.market.fanDuel}%
-              </span>
-            </div>
-            <div className="font-mono text-[10px] text-[#7A7A74] mt-1">{analysis.market.line}</div>
-            {analysis.market.diverge && (
-              <div className="mt-2 flex items-start gap-1.5 bg-[#fffbeb] border border-[#fde68a] rounded-lg p-2">
-                <AlertTriangle className="w-3 h-3 text-[#d97706] mt-0.5 shrink-0" />
-                <span className="font-mono text-[10px] text-[#d97706]">
-                  Market prices {analysis.market.divergeDir} higher than our model
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Footer bar */}
-      <div className="px-5 py-3 flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-3 flex-wrap">
-          <span className="font-mono text-[10px] text-[#7A7A74]">
-            Form:{" "}
-            <span className="text-[#16a34a] font-semibold">{analysis.form}</span>
+      <div className="flex items-center justify-between px-4 py-3 border-b border-[#E0E0E0] bg-[#F5F5F5]">
+        <div className="flex items-center gap-2">
+          <Zap size={13} className="text-[#1D428A]" />
+          <span className="font-condensed font-bold text-[13px] uppercase text-[#111] tracking-[0.5px]">
+            Courtside Analysis
           </span>
-          <span className="text-[#E4E4E0] font-mono">|</span>
-          <span className="font-mono text-[10px] text-[#7A7A74]">{analysis.defense}</span>
-          <span className="text-[#E4E4E0] font-mono">|</span>
-          <ConfBadge conf={analysis.conf} />
         </div>
-        <span className="font-mono text-[10px] text-[#AEAEA8] italic">
-          Educational analysis, not financial advice.
-        </span>
+        <ConfBadge tier={analysis.result.confidence} />
+      </div>
+
+      {/* Body */}
+      <div className="p-4">
+        <h3 className="font-condensed font-bold text-[20px] text-[#111] leading-tight mb-2">
+          {analysis.result.title}
+        </h3>
+        <p className="font-sans text-[14px] text-[#444] leading-relaxed mb-4">
+          {analysis.result.body}
+        </p>
+
+        {/* Signal bar */}
+        <div className="flex items-center gap-3 p-3 bg-[#F5F5F5] border border-[#E0E0E0] rounded-sm mb-4">
+          <div
+            className="font-condensed font-bold text-[15px] uppercase tracking-[0.5px]"
+            style={{ color: CONF_LABEL_COLOR[analysis.result.confidence] }}
+          >
+            {analysis.result.signal}
+          </div>
+          <div className="flex-1" />
+          <div className="font-mono text-[20px] font-semibold text-[#1D428A]">
+            {analysis.result.prob}%
+          </div>
+        </div>
+
+        {/* Disclaimer */}
+        <p className="font-sans text-[11px] text-[#AAA] mb-4">
+          Educational analysis only — not financial advice.
+        </p>
+
+        {/* Create a Courtside Call */}
+        <div className="border border-[#E0E0E0] rounded-sm p-3">
+          <div className="flex items-center gap-2 mb-2">
+            <Plus size={13} className="text-[#1D428A]" />
+            <span className="font-condensed font-bold text-[12px] uppercase text-[#111] tracking-[0.5px]">
+              Create a Courtside Call
+            </span>
+          </div>
+          <p className="font-sans text-[13px] text-[#444] mb-1">
+            "{analysis.result.pollProposition}"
+          </p>
+          <p className="font-mono text-[11px] mb-3" style={{ color: CONF_LABEL_COLOR[analysis.result.confidence] }}>
+            Your analysis: {analysis.result.verdictLabel} · {analysis.result.prob}%
+          </p>
+
+          {showPollCreated ? (
+            <div className="flex items-center gap-2 text-[#008248]">
+              <CheckCircle size={14} />
+              <span className="font-condensed font-semibold text-[12px] uppercase">Poll created! Others can now vote.</span>
+            </div>
+          ) : (
+            <>
+              <button
+                onClick={handleCreatePoll}
+                data-testid="btn-create-poll"
+                className="font-condensed font-bold text-[12px] uppercase tracking-[0.5px] bg-[#1D428A] text-white px-4 py-2 rounded-sm hover:bg-[#163570] transition-colors"
+              >
+                Make this a Courtside Call
+              </button>
+              <p className="font-sans text-[11px] text-[#AAA] mt-2">
+                This becomes a poll that other fans can vote on. Earn reputation points when you're right.
+              </p>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
 interface AskBarProps {
-  onSubmit: (query: string) => void;
+  onResult?: (analysis: Analysis) => void;
 }
 
-export function AskBar({ onSubmit }: AskBarProps) {
+export function AskBar({ onResult }: AskBarProps) {
   const [query, setQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [loadingStep, setLoadingStep] = useState(0);
+  const [currentStep, setCurrentStep] = useState(0);
+  const [activeAnalysis, setActiveAnalysis] = useState<Analysis | null>(null);
+  const [result, setResult] = useState<Analysis | null>(null);
 
-  const EXAMPLE_QUERIES = [
-    "Will Brunson score 30+ tonight?",
-    "Jokic triple-double vs Lakers?",
-    "SGA over 32 points vs Dallas?",
-    "Who wins Celtics vs Knicks?",
-    "Curry 5+ threes tonight?",
-  ];
+  const QUICK_QUERIES = ["Brunson props tonight", "Will Denver cover -7.5?", "Best value bet on tonight's slate"];
 
-  const handleSubmit = (q = query) => {
-    if (!q.trim()) return;
+  const runAnalysis = (q: string) => {
+    const match = MOCK_ANALYSES.find(
+      (a) => a.query.toLowerCase() === q.toLowerCase()
+    ) || MOCK_ANALYSES[Math.floor(Math.random() * MOCK_ANALYSES.length)];
+
+    setActiveAnalysis(match);
     setIsLoading(true);
-    setLoadingStep(0);
+    setCurrentStep(0);
+    setResult(null);
 
-    const stepThroughLoading = (step: number) => {
-      if (step < LOADING_STEPS.length) {
-        setLoadingStep(step);
-        setTimeout(() => stepThroughLoading(step + 1), 450 + Math.random() * 200);
-      } else {
-        setIsLoading(false);
-        onSubmit(q);
+    let step = 0;
+    const interval = setInterval(() => {
+      step++;
+      setCurrentStep(step);
+      if (step >= match.steps.length) {
+        clearInterval(interval);
+        setTimeout(() => {
+          setIsLoading(false);
+          setResult(match);
+          if (onResult) onResult(match);
+        }, 400);
       }
-    };
-    stepThroughLoading(0);
+    }, 500);
   };
 
-  if (isLoading) {
-    return (
-      <div className="border border-[#E4E4E0] rounded-xl bg-white p-6">
-        <div className="font-mono text-xs text-[#AEAEA8] mb-4">
-          Analyzing across 77,738 game logs, live markets, form signals...
-        </div>
-        <div className="space-y-2">
-          {LOADING_STEPS.map((step, i) => (
-            <div key={i} className="flex items-center gap-3">
-              {i < loadingStep ? (
-                <span className="text-[#16a34a] font-mono text-xs">✓</span>
-              ) : i === loadingStep ? (
-                <div className="w-3 h-3 border-2 border-[#1A1A18] border-t-transparent rounded-full animate-spin shrink-0" />
-              ) : (
-                <span className="w-3 h-3 rounded-full border border-[#E4E4E0] shrink-0" />
-              )}
-              <span
-                className={`font-mono text-xs ${
-                  i <= loadingStep ? "text-[#1A1A18]" : "text-[#AEAEA8]"
-                }`}
-              >
-                {step}
-              </span>
-              {i === loadingStep && (
-                <div className="flex-1 h-0.5 bg-[#E4E4E0] rounded overflow-hidden">
-                  <div className="h-full bg-[#1A1A18] shimmer" />
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!query.trim() || isLoading) return;
+    runAnalysis(query.trim());
+    setQuery("");
+  };
 
   return (
-    <div className="space-y-3">
-      <div className="relative border border-[#E4E4E0] rounded-xl bg-white overflow-hidden focus-within:border-[#1A1A18] transition-colors">
+    <div className="space-y-4">
+      {/* Input */}
+      <form onSubmit={handleSubmit} className="relative">
         <input
-          data-testid="ask-bar-input"
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
-          placeholder='Ask anything — "Will Brunson score 30 tonight?" or "Jokic triple-double odds?"'
-          className="w-full font-sans text-sm text-[#1A1A18] placeholder:text-[#AEAEA8] bg-transparent px-5 py-4 pr-28 outline-none"
+          placeholder="Ask anything... &quot;Brunson props vs BOS&quot; or &quot;Best value tonight&quot;"
+          disabled={isLoading}
+          data-testid="input-ask"
+          className="w-full font-sans text-[14px] text-[#111] placeholder-[#AAA] bg-white border-2 border-[#E0E0E0] focus:border-[#1D428A] rounded-lg px-4 py-3 pr-[100px] outline-none transition-colors disabled:opacity-60"
         />
         <button
-          data-testid="analyze-button"
-          onClick={() => handleSubmit()}
-          className="absolute right-3 top-1/2 -translate-y-1/2 bg-[#1A1A18] text-white font-sans font-medium text-sm px-4 py-2 rounded-lg hover-elevate transition-all"
+          type="submit"
+          disabled={!query.trim() || isLoading}
+          data-testid="btn-ask-submit"
+          className="absolute right-2 top-1/2 -translate-y-1/2 font-condensed font-bold text-[12px] uppercase tracking-[0.5px] bg-[#1D428A] text-white px-4 py-2 rounded-sm disabled:opacity-40 hover:bg-[#163570] transition-colors"
         >
-          Analyze
+          {isLoading ? "..." : "Analyze"}
         </button>
-      </div>
+      </form>
 
-      {/* Example chips */}
-      <div className="flex flex-wrap gap-2">
-        {EXAMPLE_QUERIES.map((q, i) => (
-          <button
-            key={i}
-            data-testid={`example-chip-${i}`}
-            onClick={() => {
-              setQuery(q);
-              handleSubmit(q);
-            }}
-            className="font-sans text-xs italic text-[#7A7A74] border border-[#E4E4E0] rounded-full px-3 py-1.5 hover-elevate transition-all bg-white"
-          >
-            "{q}"
-          </button>
-        ))}
-      </div>
+      {/* Quick queries */}
+      {!isLoading && !result && (
+        <div className="flex flex-wrap gap-2">
+          {QUICK_QUERIES.map((q) => (
+            <button
+              key={q}
+              onClick={() => { setQuery(q); runAnalysis(q); }}
+              data-testid={`btn-quick-${q.slice(0, 10)}`}
+              className="font-sans text-[12px] text-[#555] bg-white border border-[#E0E0E0] hover:border-[#1D428A] hover:text-[#1D428A] px-3 py-1.5 rounded-sm transition-all"
+            >
+              {q}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Loading steps */}
+      {isLoading && activeAnalysis && (
+        <div className="bg-white border border-[#E0E0E0] rounded-lg p-4 fade-up">
+          <div className="flex items-center gap-2 mb-3">
+            <AlertCircle size={13} className="text-[#1D428A]" />
+            <span className="font-condensed font-bold text-[12px] uppercase text-[#111] tracking-[0.5px]">
+              Analyzing · "{activeAnalysis.query}"
+            </span>
+          </div>
+          <div className="space-y-0">
+            {activeAnalysis.steps.map((step, i) => (
+              <LoadingStep key={i} step={step} index={i} currentStep={currentStep} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Result */}
+      {result && !isLoading && (
+        <AnalysisCard analysis={result} />
+      )}
     </div>
-  );
-}
-
-export function LoadingAnalysis() {
-  return (
-    <div className="border border-[#E4E4E0] rounded-xl bg-white overflow-hidden shimmer h-64" />
   );
 }

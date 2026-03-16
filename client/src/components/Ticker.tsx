@@ -1,35 +1,56 @@
 import { TICKER_ITEMS } from "@/lib/mock-data";
 
-function TickerItem({ item }: { item: typeof TICKER_ITEMS[0] }) {
+type TickerItem = typeof TICKER_ITEMS[0];
+
+function TickerGame({ item }: { item: TickerItem }) {
   return (
-    <span className="flex items-center gap-2 px-6 shrink-0 whitespace-nowrap">
-      {item.status === "live" && (
-        <span className="relative flex items-center justify-center w-2 h-2 shrink-0">
-          <span className="absolute w-2 h-2 rounded-full bg-[#16a34a] live-dot" />
-          <span className="w-2 h-2 rounded-full bg-[#16a34a]" />
+    <span className="flex items-center gap-2 px-5 shrink-0 whitespace-nowrap border-r border-[#2a2a2a]">
+      {/* Live indicator */}
+      {item.isLive && (
+        <span className="relative flex items-center gap-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#C8102E] relative">
+            <span className="absolute inset-0 rounded-full bg-[#C8102E] live-dot" />
+          </span>
+          <span className="font-condensed font-bold text-[#C8102E] text-[10px] uppercase tracking-[0.5px]">LIVE</span>
         </span>
       )}
-      <span className="font-mono text-[11px] font-semibold text-[#1A1A18]">{item.text}</span>
-      <span className="font-mono text-[11px] text-[#AEAEA8]">{item.detail}</span>
-      <span className="text-[#E4E4E0] mx-2 font-mono">|</span>
+
+      {/* Teams + scores */}
+      <span className="flex items-center gap-1.5">
+        <span className="font-condensed font-bold text-[#999] text-[12px] uppercase">{item.away}</span>
+        {item.awayScore !== null && (
+          <span className={`font-mono font-semibold text-[12px] ${item.isFinal && item.awayScore < (item.homeScore ?? 0) ? "text-[#666]" : "text-white"}`}>
+            {item.awayScore}
+          </span>
+        )}
+        <span className="text-[#444] text-[10px]">@</span>
+        <span className="font-condensed font-bold text-[#999] text-[12px] uppercase">{item.home}</span>
+        {item.homeScore !== null && (
+          <span className={`font-mono font-semibold text-[12px] ${item.isFinal && item.homeScore < (item.awayScore ?? 0) ? "text-[#666]" : "text-white"}`}>
+            {item.homeScore}
+          </span>
+        )}
+      </span>
+
+      {/* Status */}
+      <span className={`font-mono text-[10px] ${item.isLive ? "text-[#C8102E]" : item.isFinal ? "text-[#555]" : "text-[#666]"}`}>
+        {item.isFinal ? "FINAL" : item.status}
+      </span>
     </span>
   );
 }
 
 export function Ticker() {
   const doubled = [...TICKER_ITEMS, ...TICKER_ITEMS];
+
   return (
     <div
-      data-testid="ticker"
-      className="fixed top-14 left-0 right-0 z-40 bg-[#F3F3F0] border-b border-[#E4E4E0] overflow-hidden h-8 flex items-center"
+      className="fixed left-0 right-0 z-40 bg-[#1a1a1a] border-b border-[#2a2a2a] overflow-hidden"
+      style={{ top: 48, height: 32 }}
     >
-      {/* Gradient fade edges */}
-      <div className="absolute left-0 top-0 bottom-0 w-12 z-10 bg-gradient-to-r from-[#F3F3F0] to-transparent pointer-events-none" />
-      <div className="absolute right-0 top-0 bottom-0 w-12 z-10 bg-gradient-to-l from-[#F3F3F0] to-transparent pointer-events-none" />
-
-      <div className="ticker-track flex">
+      <div className="flex items-center h-full ticker-track">
         {doubled.map((item, i) => (
-          <TickerItem key={i} item={item} />
+          <TickerGame key={`${item.id}-${i}`} item={item} />
         ))}
       </div>
     </div>

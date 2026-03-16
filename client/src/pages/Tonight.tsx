@@ -1,102 +1,103 @@
-import { useState } from "react";
-import { GAMES, MOCK_ANALYSES, TRENDING_INSIGHTS } from "@/lib/mock-data";
-import { AskBar, AnalysisCard } from "@/components/AnalysisCard";
+import { GAMES, TRENDING_INSIGHTS } from "@/lib/mock-data";
+import { AskBar } from "@/components/AnalysisCard";
 import { GameCard } from "@/components/GameCard";
-import { TrendingUp } from "lucide-react";
+import { HotTakes } from "@/components/HotTakes";
+import { Headlines } from "@/components/Headlines";
+import { StatLeaders } from "@/components/StatLeaders";
+import { PollCard } from "@/components/PollCard";
+import { SectionHeader } from "@/components/SectionHeader";
+import { ACTIVE_POLLS } from "@/lib/mock-data";
 
-function getAnalysisForQuery(query: string) {
-  const q = query.toLowerCase();
-  if (q.includes("sga") || q.includes("gilgeous")) return MOCK_ANALYSES["sga"];
-  if (q.includes("jokic") || q.includes("triple")) return MOCK_ANALYSES["jokic"];
-  return MOCK_ANALYSES["default"];
-}
+const CONF_COLORS: Record<string, string> = {
+  HIGH: "#008248",
+  MED: "#F5A623",
+  COND: "#888",
+};
 
 export function Tonight() {
-  const [analysis, setAnalysis] = useState<typeof MOCK_ANALYSES["default"] | null>(null);
-  const [prefilledQuery, setPrefilledQuery] = useState("");
-
-  const handleQuery = (q: string) => {
-    setAnalysis(getAnalysisForQuery(q));
-  };
-
-  const handleTrendingClick = (query: string) => {
-    setPrefilledQuery(query);
-    setAnalysis(getAnalysisForQuery(query));
-  };
-
   return (
-    <div className="min-h-screen bg-[#FAFAF8] pt-22">
-      <div className="max-w-[1200px] mx-auto px-6 py-8 space-y-10">
-
-        {/* Ask Bar Section */}
-        <section data-testid="ask-section">
+    <div className="min-h-screen bg-white">
+      {/* Ask bar hero */}
+      <section className="border-b border-[#E0E0E0] bg-[#F5F5F5]">
+        <div className="max-w-[1280px] mx-auto px-4 py-5">
           <div className="mb-4">
-            <h1 className="font-sans font-bold text-2xl text-[#1A1A18] tracking-tight mb-1">
-              Ask Courtside
+            <h1 className="font-condensed font-bold text-[28px] uppercase text-[#111] leading-none tracking-[0.5px]">
+              Tonight's Intelligence
             </h1>
-            <p className="font-sans text-sm text-[#7A7A74]">
-              Powered by 77,738 game logs, live market signals, and the Courtside model.
+            <p className="font-sans text-[13px] text-[#888] mt-1">
+              AI-powered game analysis for March 16, 2026 · 6 games on the slate
             </p>
           </div>
-          <AskBar onSubmit={handleQuery} />
-          {analysis && (
-            <div className="mt-4">
-              <AnalysisCard analysis={analysis} />
-            </div>
-          )}
-        </section>
+          <AskBar />
+        </div>
+      </section>
 
-        {/* Games Section */}
-        <section data-testid="games-section">
-          <div className="flex items-center justify-between mb-4">
-            <div className="font-mono text-[11px] text-[#AEAEA8] uppercase tracking-widest">
-              Tonight's Games
-            </div>
-            <div className="font-mono text-[11px] text-[#AEAEA8]">
-              Mar 15, 2026
-            </div>
-          </div>
-
+      {/* Games list */}
+      <section className="py-5 border-b border-[#E0E0E0]">
+        <div className="max-w-[1280px] mx-auto px-4">
+          <SectionHeader title="Tonight's Games" />
           <div className="space-y-3">
             {GAMES.map((game) => (
               <GameCard key={game.id} game={game} />
             ))}
           </div>
-        </section>
+        </div>
+      </section>
 
-        {/* Trending Insights */}
-        <section data-testid="trending-section">
-          <div className="font-mono text-[11px] text-[#AEAEA8] uppercase tracking-widest mb-4">
-            Trending Signals
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {TRENDING_INSIGHTS.map((insight, i) => (
+      {/* Trending signals */}
+      <section className="py-4 border-b border-[#E0E0E0] bg-[#F5F5F5]">
+        <div className="max-w-[1280px] mx-auto px-4">
+          <SectionHeader title="Trending Signals" accentColor="#1D428A" />
+          <div className="flex flex-wrap gap-2">
+            {TRENDING_INSIGHTS.map((insight) => (
               <button
-                key={i}
-                data-testid={`trending-insight-${i}`}
-                onClick={() => handleTrendingClick(insight.query)}
-                className="text-left border border-[#E4E4E0] rounded-xl bg-white p-4 hover-elevate transition-all"
+                key={insight.id}
+                data-testid={`btn-trend-${insight.id}`}
+                className="flex items-center gap-2 bg-white border border-[#E0E0E0] hover:border-[#1D428A] px-3 py-2 rounded-sm transition-colors"
               >
-                <div className="flex items-start gap-3">
-                  <TrendingUp className="w-4 h-4 text-[#16a34a] shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-sans text-sm text-[#4A4A46] leading-snug">
-                      {insight.text}
-                    </p>
-                    <span className="font-mono text-[10px] text-[#AEAEA8] mt-1 block">
-                      Ask → "{insight.query}"
-                    </span>
-                  </div>
-                </div>
+                <span
+                  className="font-condensed font-bold text-[9px] uppercase tracking-[0.5px] px-1 py-0.5"
+                  style={{ color: CONF_COLORS[insight.tag], background: `${CONF_COLORS[insight.tag]}18`, borderRadius: 3 }}
+                >
+                  {insight.tag}
+                </span>
+                <span className="font-sans text-[12px] text-[#444]">{insight.label}</span>
+                <span className="font-mono text-[12px] font-semibold text-[#1D428A]">{insight.pct}%</span>
               </button>
             ))}
           </div>
-        </section>
+        </div>
+      </section>
 
-        {/* Footer disclaimer */}
-        <div className="text-center py-4 border-t border-[#E4E4E0]">
-          <p className="font-mono text-[10px] text-[#AEAEA8] italic">
-            Educational analysis only. Not financial advice. Courtside does not facilitate real-money wagering.
+      {/* Active Polls */}
+      <section className="py-5 border-b border-[#E0E0E0]">
+        <div className="max-w-[1280px] mx-auto px-4">
+          <SectionHeader title="Courtside Calls — Live" />
+          <p className="font-sans text-[12px] text-[#888] mb-3">
+            Vote with the analysis or fade it. Earn points when you're right.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {ACTIVE_POLLS.map((poll) => (
+              <PollCard key={poll.id} poll={poll} compact />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Hot Takes */}
+      <HotTakes />
+
+      {/* Headlines */}
+      <Headlines />
+
+      {/* Stat Leaders */}
+      <StatLeaders />
+
+      {/* Footer disclaimer */}
+      <div className="py-6 border-t border-[#E0E0E0] bg-[#F5F5F5]">
+        <div className="max-w-[1280px] mx-auto px-4 text-center">
+          <p className="font-sans text-[11px] text-[#AAA]">
+            Courtside provides educational analysis only — not financial advice. Always gamble responsibly.
           </p>
         </div>
       </div>

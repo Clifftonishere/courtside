@@ -1,0 +1,447 @@
+# Courtside — Refinement Prompt (V2)
+
+Apply the following refinements to the existing Courtside codebase. These changes affect the design system, the home page layout, and add a new polling/leaderboard feature.
+
+---
+
+## 1. Design System Overhaul — ESPN/NBA.com Alignment
+
+The current design feels too startup-y and light. Shift it to feel more like ESPN's NBA page and NBA.com — authoritative, sports-native, and information-dense. Here are the specific changes:
+
+### Typography
+Replace the current fonts entirely:
+
+- **Headlines, navigation, bold labels:** Use `"Barlow Condensed"` (Google Fonts), weights 600 and 700. This is close to ESPN's condensed headline font. Uppercase where appropriate for section headers.
+- **Body text, editorial content, descriptions:** Use `"Source Sans 3"` (Google Fonts), weights 400 and 600. Clean, highly readable, sports-broadcast feel.
+- **All numbers, stats, scores, odds, data:** Use `"IBM Plex Mono"` (Google Fonts), weights 400, 500, 600. Monospace for all numerical data — non-negotiable.
+
+Load all three from Google Fonts:
+```
+https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700&family=Source+Sans+3:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap
+```
+
+### Color Palette
+Shift from the warm off-white palette to something closer to ESPN/NBA.com — a crisper, more sports-media feel:
+
+```
+Background:         #FFFFFF  (pure white — like ESPN)
+Surface/Sections:   #F5F5F5  (light gray section backgrounds)
+Card:               #FFFFFF  (white cards with border)
+Dark sections:      #111111  (near black — for featured hero areas, player profiles)
+Dark card:          #1A1A1A  (cards on dark background)
+
+Text Primary:       #111111  (near black)
+Text Secondary:     #444444  (dark gray)
+Text Tertiary:      #888888  (medium gray)
+Text Muted:         #AAAAAA  (light gray)
+Text on Dark:       #FFFFFF  (white on dark sections)
+Text on Dark Muted: #999999  (gray on dark sections)
+
+Border:             #E0E0E0  (standard divider)
+Border Strong:      #CCCCCC  (emphasized divider)
+
+Accent Blue:        #1D428A  (NBA official blue — use for primary CTA, links, active states)
+Accent Red:         #C8102E  (NBA official red — use for live indicators, alerts, losses)
+Win Green:          #008248  (slightly darker green — wins, positive signals)
+Warning Amber:      #F5A623  (amber — medium confidence, caution)
+
+Live Pulse:         #C8102E  (red pulse for live games — like ESPN's live indicator)
+```
+
+### Layout Principles
+- **Full-width sections** alternating between white and light gray backgrounds — like ESPN's modular layout
+- **Section headers** in Barlow Condensed 700, uppercase, 13-14px, with a left-aligned red/blue accent bar (3px thick, 24px wide) to the left of the text — this is the ESPN signature pattern
+- **Score ticker at very top** should have a dark background (#111111) with white text — matching ESPN's scoreboard bar
+- **Cards** use subtle borders (1px #E0E0E0) with NO border-radius larger than 8px. ESPN and NBA.com use very minimal rounding.
+- **Horizontal dividers** between content sections, not excessive whitespace
+- **Dense information layout** — less padding, more content visible above the fold. ESPN packs information tight. Follow that density.
+
+### Component Styling Updates
+- **Buttons:** Primary buttons use NBA blue (#1D428A) background with white text. Secondary buttons use white background with #1D428A border and text.
+- **Badges/Pills:** Confidence badges (HIGH/MED/COND) should be small, uppercase, Barlow Condensed 600, with subtle background color. Not rounded pills — more like rectangular tags with 4px border-radius.
+- **Score displays:** Large, bold, IBM Plex Mono. Live scores should have the red live dot (pulsing) matching ESPN's style.
+- **Team abbreviations:** Always Barlow Condensed 700, uppercase.
+- **Section headers pattern:**
+```html
+<div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+  <div style="width: 3px; height: 18px; background: #C8102E; border-radius: 1px;"></div>
+  <h2 style="font-family: 'Barlow Condensed'; font-weight: 700; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; color: #111;">Today's Hot Takes</h2>
+</div>
+```
+
+---
+
+## 2. Home Page — New Modules
+
+The home page currently just has the ask bar and game list. It needs to feel like a living, breathing NBA hub. Add the following modules below the existing content, in this order:
+
+### Module A: Courtside Hot Takes (below the game list)
+
+A horizontal scrolling row of 4-5 editorial take cards. These are short, punchy AI-generated takes about today's games — the Mamba Mentality voice.
+
+Each card:
+- Dark background (#1A1A1A) with white text
+- Game reference at top: "BOS @ NYK" in IBM Plex Mono 11px, muted
+- Bold headline in Barlow Condensed 700, 18-20px, white: e.g. "Brunson drops 35 on a Boston defense with no answer"
+- 2-line supporting text in Source Sans 3 400, 13px, gray (#999): "Knicks' home court advantage and Brunson's L5 surge meet a Celtics team on a 3-game skid. This is a statement game."
+- Confidence badge (HIGH/MED/COND) in top right
+- Bottom row: "Courtside pick: NYK · 68% · +4.2" in IBM Plex Mono 12px
+
+The section header uses the ESPN-style red bar pattern: `COURTSIDE HOT TAKES`
+
+Make this horizontally scrollable with snap behavior. Cards should be ~320px wide with 12px gap.
+
+Mock 5 takes with varying confidence levels and different games.
+
+### Module B: NBA Headlines (below hot takes)
+
+A vertical list of 6-8 headline cards pulling from NBA news. Standard news-feed layout.
+
+Each headline item:
+- Compact row layout: small category tag on left (e.g. "TRADE RUMOR", "INJURY", "RECAP" — in Barlow Condensed 600, 10px, uppercase, colored tag: blue for general, red for breaking, amber for injury)
+- Headline text: Source Sans 3 600, 15px, #111
+- Timestamp on right: "2h ago" in IBM Plex Mono 11px, #AAA
+- Thin bottom border between items
+
+Section header: `NBA HEADLINES` with the red accent bar
+
+Mock 6-8 headlines:
+- "BREAKING: Jimmy Butler cleared to return for Heat playoff push" (tag: BREAKING, red)
+- "Lakers trade deadline acquisition paying dividends in March" (tag: ANALYSIS, blue)
+- "Wembanyama named Western Conference Player of the Week" (tag: AWARD, blue)
+- "Celtics' Porzingis to miss 2-3 weeks with calf strain" (tag: INJURY, amber)
+- "Warriors eyeing playoff seeding with 5-game win streak" (tag: RECAP, blue)
+- "Thunder clinch top seed in Western Conference" (tag: STANDINGS, blue)
+
+### Module C: Today's Stat Leaders (below headlines)
+
+A horizontal row of 5 stat category cards side by side:
+
+Categories: Points | Rebounds | Assists | Steals | Blocks
+
+Each card:
+- White background with 1px border
+- Category label at top: Barlow Condensed 700, 12px, uppercase, muted
+- Top 3 leaders listed:
+  1. Player name (Source Sans 3 600, 14px) + Team abbr (muted) + Stat value (IBM Plex Mono 600, 18px, NBA blue)
+  2. Player name + stat (smaller, 13px)
+  3. Player name + stat (smaller, 12px, more muted)
+- The #1 leader should be visually emphasized (larger stat number, slight left border accent in team color)
+
+This should be a 5-column grid on desktop, 2-column + scroll on mobile.
+
+Mock data:
+- Points: SGA (34), Brunson (31), Jokic (29)
+- Rebounds: Jokic (14), Gobert (13), Wembanyama (12)
+- Assists: Haliburton (12), Jokic (11), Brunson (9)
+- Steals: Caruso (3), SGA (2), Fox (2)
+- Blocks: Wembanyama (4), AD (3), Bam (2)
+
+---
+
+## 3. Polling Feature — "Courtside Calls"
+
+This is a new feature section that sits on the home page (between the game list and hot takes) AND has its own dedicated page at `/polls`.
+
+### How It Works
+
+1. **Users generate polls** by typing into the ask bar. When the analysis card appears, there's a prominent "Create a Courtside Call" button at the bottom.
+2. Clicking it creates a **poll** that other users can vote on: AGREE (with Courtside's analysis) or FADE (take the other side).
+3. The poll is tied to a real game outcome. When the game ends and the stat resolves, the poll auto-resolves.
+4. Users who voted correctly earn **reputation points**:
+   - Correct vote on a HIGH confidence call: +3 points
+   - Correct vote on a MED confidence call: +5 points (harder to get right)
+   - Correct vote on a COND confidence call: +8 points (highest reward for hardest calls)
+   - Incorrect vote: 0 points (never negative — keep it fun)
+   - Creating a poll that gets 10+ votes: +2 bonus points
+5. Points accumulate on a **leaderboard**.
+
+### Home Page: Active Polls Module
+
+Place this between the game list and hot takes. Show 3-4 active polls in a compact format.
+
+Each poll card:
+- Left side: The proposition in Source Sans 3 600, 15px: "Brunson over 30 points vs BOS"
+- Below: Courtside's verdict (e.g. "LEAN UNDER · 42%") in IBM Plex Mono, colored by verdict
+- Center: Vote bar showing AGREE vs FADE percentages as a horizontal split bar (like ESPN's prediction polls)
+  - AGREE side: NBA blue (#1D428A)
+  - FADE side: gray (#888)
+  - Show total vote count below
+- Right side: Two voting buttons stacked: "AGREE" (blue outline) and "FADE" (gray outline)
+- Bottom: Time until resolution: "Resolves at 10:30 PM ET" or "Resolves when BOS @ NYK ends"
+- If resolved: show the result with a green check (correct side) or red X. Show points earned.
+
+Section header: `COURTSIDE CALLS — LIVE` with the red accent bar
+
+### Polls Page (`/polls`)
+
+Full-page view of all polls.
+
+**Tabs at top:** Active | Resolved | My Calls
+
+**Active tab:** Grid/list of all open polls. Filterable by game, confidence level, stat type.
+
+**Resolved tab:** Shows resolved polls with results, point awards, and accuracy tracking.
+
+**My Calls tab:** User's personal polling history — their votes, outcomes, points earned, current streak.
+
+### Creating a Poll (from Analysis Card)
+
+When a user gets an analysis result from the ask bar, add a section at the bottom of the analysis card:
+
+```
+┌──────────────────────────────────────────────┐
+│  CREATE A COURTSIDE CALL                      │
+│                                               │
+│  "Brunson over 30 points vs BOS"              │
+│  Your analysis: LEAN UNDER · 42%              │
+│                                               │
+│  [ Make this a Courtside Call ]  ← blue btn   │
+│                                               │
+│  This becomes a poll that other fans can       │
+│  vote on. Earn reputation points when you're   │
+│  right.                                        │
+└──────────────────────────────────────────────┘
+```
+
+### Leaderboard
+
+Accessible from the header navigation (add "Leaderboard" as a nav item) and embedded as a sidebar module on the polls page.
+
+Show top 20 users ranked by reputation points:
+- Rank number
+- Username (mock some fun NBA-themed usernames)
+- Total reputation points (IBM Plex Mono, bold)
+- Accuracy rate (e.g. "67%")
+- Current streak (e.g. "W5")
+- Tier badge based on points:
+  - **Courtside** (top 1%) — Gold accent
+  - **Floor Seat** (top 5%) — Silver accent
+  - **Lower Bowl** (top 20%) — Bronze accent
+  - **Upper Deck** (everyone else) — No accent
+
+Mock 20 leaderboard entries with realistic-looking usernames and stats.
+
+The leaderboard header should emphasize the reward angle:
+"Top performers earn recognition and future access to exclusive perks. Prove your basketball IQ."
+
+---
+
+## 4. Navigation Update
+
+Update the header navigation to accommodate the new features:
+
+**Nav items (segmented control):** Tonight | Players | Polls | Arena
+
+Add "Leaderboard" as a separate icon/link on the right side of the header, next to the accuracy record.
+
+The accuracy record display in the header should show the season record more prominently — make it feel like a badge of credibility:
+```
+187-142 · 56.8% · W4
+```
+In IBM Plex Mono, with wins in green, losses in red, and the rest in white/muted depending on background.
+
+---
+
+## 5. Additional Polish
+
+- **Live game indicators** should match ESPN's style: red dot (pulsing) + "LIVE" text in red, Barlow Condensed 700, 11px uppercase
+- **Score ticker** at top should have the dark background (#111) with team abbreviations, scores, and quarter/time info scrolling. Live games have the red dot. Upcoming games show tipoff time. Final games show final score. This exactly mirrors the ESPN scoreboard bar at the top of their site.
+- **Ask bar** styling: keep it prominent but adjust to match the new design system. Use NBA blue for the submit button instead of black. Input border should be 2px on focus, NBA blue.
+- All **team abbreviations** throughout the site should optionally show the team's actual logo. Use the NBA CDN URL pattern: `https://cdn.nba.com/logos/nba/{teamId}/primary/L/logo.svg` where teamId is the NBA team ID (e.g. 1610612752 for Knicks). If logos are too complex to implement now, use colored team badge squares with the abbreviation — that's fine for the mockup.
+- **Mobile responsive:** All new modules should stack vertically on mobile. The hot takes carousel becomes a single-column swipeable stack. Stat leaders becomes 2-column. Poll cards become full-width.
+
+---
+
+## Mock Data for New Features
+
+Add to the mock data file:
+
+```typescript
+export const HOT_TAKES = [
+  {
+    id: "ht1",
+    game: "BOS @ NYK",
+    headline: "Brunson drops 35 on a Boston defense with no answer",
+    body: "Knicks' home court advantage and Brunson's L5 surge meet a Celtics team on a 3-game skid. This is a statement game.",
+    pick: "NYK",
+    conf: "HIGH",
+    prob: 68,
+    margin: "+4.2",
+  },
+  {
+    id: "ht2",
+    game: "LAL @ DEN",
+    headline: "Jokic triple-double is automatic against a Lakers frontcourt that can't guard the post",
+    body: "Jokic has recorded a triple-double in 4 of 5 against LAL this season. Davis can't do it alone.",
+    pick: "DEN",
+    conf: "MED",
+    prob: 61,
+    margin: "+3.1",
+  },
+  {
+    id: "ht3",
+    game: "GSW @ MIN",
+    headline: "Edwards puts Golden State to bed early — this isn't close",
+    body: "Ant is averaging 34.2 in home games over the last 10. Warriors' defense ranks 28th in the league. Mismatch everywhere.",
+    pick: "MIN",
+    conf: "HIGH",
+    prob: 72,
+    margin: "+6.1",
+  },
+  {
+    id: "ht4",
+    game: "MIL @ PHX",
+    headline: "Giannis and Dame deliver in the desert — Bucks need this one",
+    body: "Milwaukee fighting for seeding. Phoenix without Beal. Giannis goes for 30+.",
+    pick: "MIL",
+    conf: "MED",
+    prob: 57,
+    margin: "+2.8",
+  },
+  {
+    id: "ht5",
+    game: "DAL @ CLE",
+    headline: "Cleveland's home record is suffocating — Mavs don't have the depth",
+    body: "CLE is 28-5 at home. Without a second star next to Luka, Dallas can't keep up in the second half.",
+    pick: "CLE",
+    conf: "COND",
+    prob: 52,
+    margin: "+1.5",
+  },
+];
+
+export const NBA_HEADLINES = [
+  { id: "n1", tag: "BREAKING", tagColor: "#C8102E", headline: "Jimmy Butler cleared to return for Heat playoff push", time: "2h ago" },
+  { id: "n2", tag: "ANALYSIS", tagColor: "#1D428A", headline: "Lakers trade deadline acquisition paying dividends in March", time: "3h ago" },
+  { id: "n3", tag: "AWARD", tagColor: "#1D428A", headline: "Wembanyama named Western Conference Player of the Week", time: "5h ago" },
+  { id: "n4", tag: "INJURY", tagColor: "#F5A623", headline: "Celtics' Porzingis to miss 2-3 weeks with calf strain", time: "6h ago" },
+  { id: "n5", tag: "RECAP", tagColor: "#1D428A", headline: "Warriors eyeing playoff seeding with 5-game win streak", time: "8h ago" },
+  { id: "n6", tag: "STANDINGS", tagColor: "#1D428A", headline: "Thunder clinch top seed in Western Conference", time: "10h ago" },
+];
+
+export const STAT_LEADERS = {
+  points: [
+    { player: "Shai Gilgeous-Alexander", team: "OKC", value: 34 },
+    { player: "Jalen Brunson", team: "NYK", value: 31 },
+    { player: "Nikola Jokic", team: "DEN", value: 29 },
+  ],
+  rebounds: [
+    { player: "Nikola Jokic", team: "DEN", value: 14 },
+    { player: "Rudy Gobert", team: "MIN", value: 13 },
+    { player: "Victor Wembanyama", team: "SAS", value: 12 },
+  ],
+  assists: [
+    { player: "Tyrese Haliburton", team: "IND", value: 12 },
+    { player: "Nikola Jokic", team: "DEN", value: 11 },
+    { player: "Jalen Brunson", team: "NYK", value: 9 },
+  ],
+  steals: [
+    { player: "Alex Caruso", team: "OKC", value: 3 },
+    { player: "Shai Gilgeous-Alexander", team: "OKC", value: 2 },
+    { player: "De'Aaron Fox", team: "SAC", value: 2 },
+  ],
+  blocks: [
+    { player: "Victor Wembanyama", team: "SAS", value: 4 },
+    { player: "Anthony Davis", team: "LAL", value: 3 },
+    { player: "Bam Adebayo", team: "MIA", value: 2 },
+  ],
+};
+
+export const ACTIVE_POLLS = [
+  {
+    id: "p1",
+    proposition: "Brunson over 30 points vs BOS",
+    verdict: "LEAN UNDER",
+    prob: 42,
+    conf: "MED",
+    agreeVotes: 234,
+    fadeVotes: 189,
+    totalVotes: 423,
+    resolvesAt: "10:30 PM ET",
+    game: "BOS @ NYK",
+    status: "active",
+  },
+  {
+    id: "p2",
+    proposition: "Jokic records a triple-double vs LAL",
+    verdict: "LEAN OVER",
+    prob: 61,
+    conf: "HIGH",
+    agreeVotes: 567,
+    fadeVotes: 312,
+    totalVotes: 879,
+    resolvesAt: "When LAL @ DEN ends",
+    game: "LAL @ DEN",
+    status: "active",
+  },
+  {
+    id: "p3",
+    proposition: "Edwards scores 28+ vs GSW",
+    verdict: "LEAN OVER",
+    prob: 63,
+    conf: "HIGH",
+    agreeVotes: 445,
+    fadeVotes: 198,
+    totalVotes: 643,
+    resolvesAt: "12:30 AM ET",
+    game: "GSW @ MIN",
+    status: "active",
+  },
+  {
+    id: "p4",
+    proposition: "Celtics win by 5+ vs Knicks",
+    verdict: "LEAN FADE",
+    prob: 38,
+    conf: "COND",
+    agreeVotes: 156,
+    fadeVotes: 201,
+    totalVotes: 357,
+    resolvesAt: "10:30 PM ET",
+    game: "BOS @ NYK",
+    status: "active",
+  },
+];
+
+export const LEADERBOARD = [
+  { rank: 1, username: "MambaForever24", points: 847, accuracy: 71, streak: "W8", tier: "Courtside" },
+  { rank: 2, username: "JokicVision", points: 812, accuracy: 68, streak: "W5", tier: "Courtside" },
+  { rank: 3, username: "AnalyticsKing", points: 756, accuracy: 65, streak: "W3", tier: "Floor Seat" },
+  { rank: 4, username: "NBABrainiac", points: 723, accuracy: 64, streak: "L1", tier: "Floor Seat" },
+  { rank: 5, username: "HoopScientist", points: 698, accuracy: 63, streak: "W4", tier: "Floor Seat" },
+  { rank: 6, username: "RimProtector", points: 654, accuracy: 61, streak: "W2", tier: "Floor Seat" },
+  { rank: 7, username: "TripleDouble", points: 621, accuracy: 60, streak: "L2", tier: "Lower Bowl" },
+  { rank: 8, username: "ClutchGene", points: 589, accuracy: 59, streak: "W6", tier: "Lower Bowl" },
+  { rank: 9, username: "SplashZone", points: 567, accuracy: 58, streak: "W1", tier: "Lower Bowl" },
+  { rank: 10, username: "PaintBeast", points: 534, accuracy: 57, streak: "L1", tier: "Lower Bowl" },
+  { rank: 11, username: "FloorGeneral", points: 512, accuracy: 56, streak: "W3", tier: "Lower Bowl" },
+  { rank: 12, username: "DunkContest", points: 498, accuracy: 55, streak: "L3", tier: "Lower Bowl" },
+  { rank: 13, username: "SixthMan", points: 476, accuracy: 55, streak: "W2", tier: "Lower Bowl" },
+  { rank: 14, username: "ChasedownBlock", points: 445, accuracy: 54, streak: "W1", tier: "Upper Deck" },
+  { rank: 15, username: "PickAndPop", points: 423, accuracy: 53, streak: "L1", tier: "Upper Deck" },
+  { rank: 16, username: "FastBreak", points: 401, accuracy: 52, streak: "W4", tier: "Upper Deck" },
+  { rank: 17, username: "GlassEater", points: 389, accuracy: 52, streak: "L2", tier: "Upper Deck" },
+  { rank: 18, username: "DimeDrop", points: 367, accuracy: 51, streak: "W1", tier: "Upper Deck" },
+  { rank: 19, username: "BuzzerBeater", points: 345, accuracy: 50, streak: "L1", tier: "Upper Deck" },
+  { rank: 20, username: "PostFade", points: 323, accuracy: 49, streak: "W2", tier: "Upper Deck" },
+];
+```
+
+---
+
+## Build Order for Refinements
+
+1. Update the Tailwind config and global styles with the new color palette and fonts
+2. Restyle the header, ticker, and navigation to match ESPN/NBA.com density
+3. Restyle existing game cards and analysis card with new typography and colors
+4. Add Hot Takes module (horizontal scroll)
+5. Add NBA Headlines module (vertical list)
+6. Add Stat Leaders module (5-column grid)
+7. Build the Courtside Calls polling UI on the home page
+8. Build the `/polls` page with Active/Resolved/My Calls tabs
+9. Build the leaderboard component and `/leaderboard` page
+10. Add "Create a Courtside Call" button to the analysis card
+11. Polish responsive breakpoints for all new modules
+12. Verify all numbers use IBM Plex Mono, all headers use Barlow Condensed
+
+Focus on making this feel like a real sports media platform, not a tech demo. The ESPN density and information hierarchy is the north star.
