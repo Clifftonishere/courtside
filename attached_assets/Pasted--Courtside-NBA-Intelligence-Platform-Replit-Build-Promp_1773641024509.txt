@@ -1,0 +1,376 @@
+# Courtside — NBA Intelligence Platform
+## Replit Build Prompt
+
+You are building **Courtside**, an AI-powered NBA intelligence platform. The tagline is **"See the edge."** It combines real-time game data, a quantitative prediction model, AI-generated editorial analysis, prediction market odds, and comprehensive player scouting — served through a clean, data-rich UI designed for basketball obsessives who think like analysts.
+
+Courtside is NOT a betting platform. It is an educational sports analysis tool that helps fans understand games more deeply. It surfaces probabilities, prop analysis, and market comparisons — but always with a disclaimer that this is not financial advice.
+
+---
+
+## Tech Stack
+- **Framework:** Next.js 14 (App Router)
+- **Styling:** Tailwind CSS
+- **Fonts:** Load from Google Fonts:
+  - `JetBrains Mono` (weights: 400, 500, 600, 700) — for all data, numbers, stats, tickers, odds, percentages, monospace elements
+  - `Outfit` (weights: 300, 400, 500, 600, 700) — for all body text, headings, labels, navigation, editorial content
+- **Data:** Mock data hardcoded in a `/lib/mock-data.ts` file (we'll wire real APIs later)
+- **Charts:** Recharts for win probability charts and stat visualizations
+- **Icons:** Lucide React
+
+---
+
+## Design System
+
+### Philosophy
+Analytical precision meets insider access. Think Bloomberg Terminal meets The Athletic. Data-dense but not cluttered. Every pixel earns its space. The UI should feel like sitting courtside with a quantitative analyst whispering in your ear.
+
+### Color Palette (Light Theme — primary)
+```
+Background:      #FAFAF8  (warm off-white)
+Surface:         #F3F3F0  (cards, sections)
+Card:            #FFFFFF  (elevated cards)
+Card Hover:      #F7F7F5
+
+Text Primary:    #1A1A18  (headlines, data)
+Text Secondary:  #4A4A46  (body text)
+Text Tertiary:   #7A7A74  (labels, captions)
+Text Muted:      #AEAEA8  (timestamps, hints)
+
+Border Default:  #E4E4E0
+Border Strong:   #D4D4D0
+
+Green:           #16a34a  (wins, positive, live indicator)
+Green BG:        #f0fdf4
+Red:             #dc2626  (losses, negative)
+Red BG:          #fef2f2
+Amber:           #d97706  (warnings, medium confidence)
+Amber BG:        #fffbeb
+Blue:            #2563eb  (info, links)
+Blue BG:         #eff6ff
+```
+
+### Typography Rules
+- **Headlines/Navigation:** Outfit 600-700, tight letter-spacing (-0.02em)
+- **Body text:** Outfit 400, line-height 1.6
+- **All numbers, stats, scores, odds, percentages:** JetBrains Mono. This is critical — every number on the platform should be monospace.
+- **Labels/Captions:** Outfit 400-500, 11-12px, uppercase letter-spacing where used as section headers
+- **Data labels:** JetBrains Mono 11px, uppercase, letter-spacing 0.5-1px, text-muted color
+
+### Spacing & Layout
+- Max content width: 1200px, centered
+- Card border-radius: 12px
+- Inner card padding: 20-24px
+- Section gaps: 24-32px
+- Use subtle 1px borders, not shadows
+- Cards have a slight border, not box-shadow
+
+### Confidence Tier Colors
+- **HIGH:** Green (#16a34a)
+- **MED:** Amber (#d97706)
+- **COND (Conditional):** Gray (#9ca3af)
+
+### Team Color Map (use for subtle accents on team badges/cards)
+```
+ATL:#E03A3E  BOS:#007A33  BKN:#000000  CHA:#1D1160
+CHI:#CE1141  CLE:#6F263D  DAL:#00538C  DEN:#0E2240
+DET:#C8102E  GSW:#006BB6  HOU:#CE1141  IND:#002D62
+LAC:#C8102E  LAL:#552583  MEM:#5D76A9  MIA:#98002E
+MIL:#00471B  MIN:#236192  NOP:#0C2340  NYK:#F58426
+OKC:#007AC1  ORL:#0077C0  PHI:#006BB6  PHX:#E56020
+POR:#E03A3E  SAC:#5A2D81  SAS:#C4CED4  TOR:#CE1141
+UTA:#002B5C  WAS:#002B5C
+```
+
+---
+
+## Pages & Components
+
+### 1. Global Shell
+**Header** (fixed top, all pages):
+- Left: `courtside` wordmark in JetBrains Mono 700, 20px. Next to it: `see the edge` in JetBrains Mono 400, 11px, muted color
+- Center: Navigation pills — `tonight` | `players` | `arena` — styled as a segmented control with active state having white background + subtle shadow
+- Right: Season accuracy record displayed as compact stats: `187W · 142L · W4 · 56.8%` in JetBrains Mono 11px. GREEN for wins, RED for losses.
+
+**Ticker** (below header, horizontal scrolling):
+- Auto-scrolling horizontal ticker showing: live score updates, completed game results, upcoming tipoff times, notable stat milestones from live games
+- Pauses on hover
+- Monospace font for all numbers
+- Green dot pulse animation for live games
+- Format examples: `🟢 LAL 87 - DEN 94 Q3 4:22` | `BOS @ NYK 7:30 PM` | `Jokic: 28/14/11 — triple-double watch`
+
+### 2. Tonight Page (Main/Home — `/`)
+
+This is the core experience. Three sections stacked vertically:
+
+#### Section A: Ask Bar (THE centrepiece)
+- Large, prominent input bar at the top of the page
+- Placeholder: `Ask anything — "Will Brunson score 30 tonight?" or "Jokic triple-double odds?"`
+- Right-aligned "Analyze" button inside the input, dark background (#1A1A18), white text
+- Below input: row of example query chips (italic, bordered pills). Examples:
+  - "Will Brunson score 30+ tonight?"
+  - "Jokic triple-double vs Milwaukee?"
+  - "SGA over 6 assists vs Lakers?"
+  - "Curry 5+ threes tonight?"
+  - "Who wins Celtics vs Knicks?"
+- On submit: show a loading state ("Analyzing across 77,738 game logs, live markets, form signals...") with a shimmer animation
+- Then render the **Analysis Card** (see component spec below)
+
+#### Section B: Tonight's Games (below ask bar)
+- Section header: `TONIGHT'S GAMES` in JetBrains Mono 11px uppercase, muted, with date on the right
+- Vertical list of game cards, one per row
+- Each game card shows:
+  - Away team (badge + name + record) on left
+  - Game status in center (time for upcoming, quarter+clock for live with green pulse dot, "Final" for completed)
+  - Home team (badge + name + record) on right
+  - Courtside pick on far right: team abbreviation in confidence color, probability percentage, predicted margin, confidence tier badge
+  - For final games: show "CORRECT" (green) or "MISS" (red) next to the pick
+- Clicking a game card expands it OR navigates to a game detail page showing:
+  - Full Courtside Take (editorial analysis paragraph, Mamba Mentality voice — decisive, specific, never hedging)
+  - Power Model breakdown (factor-by-factor: net rating, HCA, rest, form, H2H, injuries — each with a contribution bar)
+  - Win probability chart (if live or final)
+  - Box score (if live or final)
+  - Community vote (AGREE / pick the other side — show consensus %)
+  - Market odds from Kalshi (spread, moneyline, total)
+
+#### Section C: Quick Insights (optional sidebar or bottom section)
+- "Trending" section showing 3-4 notable signals:
+  - "Jokic has recorded a triple-double in 4 of his last 5 games"
+  - "Boston is 2-8 in their last 10 road games"
+  - "Brunson averaging 31.2 pts over last 5 (season avg: 28.4)"
+- Each insight clickable → pre-fills the ask bar with a related query
+
+### 3. Players Page (`/players`)
+
+This is the DNA tab from IRIS.
+
+#### Player List
+- Grid of player cards (3-4 columns on desktop, 2 on mobile)
+- Each card shows: player name (Outfit 600), team badge, position, tier badge
+- Tier badges with visual hierarchy:
+  - **Generational** — Gold border + subtle glow (#FFD700)
+  - **All-World** — Silver border (#C0C0C0)
+  - **Franchise** — Bronze border (#CD7F32)
+  - **All-Star** — Neutral gray
+  - **Rising** — Light gray, no border accent
+- Key season stats in JetBrains Mono: PTS / REB / AST / FG%
+- Search bar at top to filter by name
+- Filter pills below search: position (PG, SG, SF, PF, C), team, tier
+
+#### Player Profile Page (`/players/[id]`)
+**This is the "shrine" page — the most visually rich page in the app.**
+
+Dark background (#0A0A0B) for this page only. All other pages use the light theme.
+
+Sections stacked vertically:
+
+1. **Hero Section**
+   - Player name in Outfit 700, 48px, white
+   - Team + Position + Jersey Number
+   - Core season stats in large JetBrains Mono: PTS / REB / AST / FG%
+   - Attribute radar chart (hexagon) showing 6 categories: Inside Scoring, Outside Scoring, Playmaking, Athleticism, Defending, Rebounding (0-99 scale)
+   - Tier badge prominently displayed
+
+2. **Courtside Identity** (one defining sentence)
+   - Example: "The most unguardable scorer in basketball — full stop."
+   - Outfit 500, 20px, white/85 opacity
+   - Character-by-character streaming animation on load
+
+3. **Tonight's Props** (ONLY shows if player has a game today — this is the Edge integration)
+   - Header: `COURTSIDE EDGE — TONIGHT'S ANALYSIS` in JetBrains Mono
+   - For each stat (points, rebounds, assists):
+     - Stat name + threshold + probability + confidence tier
+     - Probability bar (colored by over/under lean)
+     - Key context: L5 avg vs season avg vs opponent
+     - Opponent defensive rating for that stat
+   - Market comparison if available (FanDuel/DraftKings line vs Courtside model)
+   - Edge signal callout if model diverges from market by >5%
+
+4. **Dissection** (4 glass-morphism cards in 2x2 grid)
+   - Each card: trait category (OFFENSE/DEFENSE/PLAYMAKING/PHYSICALITY), skill label, editorial detail
+   - Below: weakness cards with red accent border and "EXPLOITABLE" tag
+
+5. **Scout Notes** (3-4 fictional scout quotes)
+   - Styled as blockquotes with attribution
+   - Written as if real basketball insiders are talking
+
+6. **Scouting Report** (2-3 paragraph narrative)
+   - What does watching this player feel like?
+
+7. **Last 5 Games** (compact table)
+   - Opponent, W/L, PTS, REB, AST, +/-
+   - Color-coded results
+
+8. **Tags** (horizontal pill row)
+   - Examples: ASCENDING, CLUTCH, UNDERRATED, LOCKED-IN, DECLINING
+
+### 4. Arena Page (`/arena`)
+
+Editorial content hub. Blog-style layout.
+
+- Modern card-based layout with featured article hero at top
+- Content types: Pre-Game Previews, Post-Game Verdicts, Player Spotlights, Weekly Power Rankings
+- Each article card shows: headline, 2-line excerpt, date, reading time, category tag
+- Newsletter signup CTA at bottom of page
+
+### 5. Analysis Card Component (reusable — appears on Tonight page after ask bar query)
+
+This is the most important component. It's what users see when they ask a question.
+
+```
+┌─────────────────────────────────────────────────────┐
+│  ANALYSIS                                    42%    │
+│  Jalen Brunson — Over 30 points          LEAN UNDER │
+│  vs BOS · Home · Tonight 7:30 PM ET                │
+├─────────────────────────────────────────────────────┤
+│  Season │ Last 10 │ Last 5 │ vs BOS │ Home         │
+│   38%   │   40%   │  60%   │  29%   │  48%         │
+│  62 gms │ 4 of 10 │ 3 of 5 │ 7 gms  │ 31 gms      │
+├─────────────────────────────────────────────────────┤
+│  EDGE SIGNAL                                        │
+│  Brunson's L5 surge (+2.8 over season avg) meets    │
+│  Boston's top-5 defense. Hot streaks vs elite D     │
+│  regress. Historical rate vs BOS: 2-of-7 over 30.  │
+├────────────────────────┬────────────────────────────┤
+│  LAST 5 GAMES          │  MARKET COMPARISON         │
+│  Mar 14 MIA  34 HIT    │  Courtside: 42.0%          │
+│  Mar 12 CHA  31 HIT    │  FanDuel:   53.5%          │
+│  Mar 10 DET  27 MISS   │  O29.5 @ 1.87x             │
+│  Mar 8  IND  33 HIT    │                            │
+│  Mar 6  ORL  24 MISS   │  ⚠ Market prices OVER      │
+│                        │  higher than our model      │
+├────────────────────────┴────────────────────────────┤
+│  Form: HOT · Defense: GOOD DEF · Allows: 108.4 pts │
+│                                    MED confidence   │
+└─────────────────────────────────────────────────────┘
+```
+
+Key design notes for this card:
+- Probability number is LARGE (28-32px, JetBrains Mono 700)
+- Color the probability: green if >55%, red if <45%, amber if 45-55%
+- Splits row uses thin vertical dividers between each stat
+- Edge Signal section has a slightly different background (surface color) to stand out
+- Market comparison shows Courtside's model vs the sportsbook, with a callout box if they diverge
+- Bottom bar shows form, defense tier, and confidence in a compact row
+- Always include at the bottom of any analysis: "Educational analysis, not financial advice."
+
+---
+
+## Mock Data Structure
+
+Create a file at `/lib/mock-data.ts` with:
+
+```typescript
+// Games for tonight
+export const GAMES = [
+  {
+    id: "1",
+    away: { abbr: "BOS", name: "Celtics", record: "48-16", score: 0 },
+    home: { abbr: "NYK", name: "Knicks", record: "42-22", score: 0 },
+    status: "upcoming", // "upcoming" | "live" | "final"
+    time: "7:30 PM ET",
+    quarter: null,
+    clock: null,
+    pick: { team: "NYK", conf: "HIGH", prob: 68, margin: "+4.2" },
+    correct: null,
+  },
+  {
+    id: "2",
+    away: { abbr: "LAL", name: "Lakers", record: "35-29", score: 87 },
+    home: { abbr: "DEN", name: "Nuggets", record: "44-20", score: 94 },
+    status: "live",
+    time: null,
+    quarter: "Q3",
+    clock: "4:22",
+    pick: { team: "DEN", conf: "MED", prob: 61, margin: "+3.1" },
+    correct: null,
+  },
+  // ... add 3-5 more games with mix of upcoming/live/final
+];
+
+// Players for DNA page
+export const PLAYERS = [
+  {
+    id: "brunson",
+    name: "Jalen Brunson",
+    team: "NYK",
+    position: "PG",
+    number: 11,
+    tier: "All-World",
+    ovr: 91,
+    identity: "The most complete point guard in the Eastern Conference — and he knows it.",
+    stats: { pts: 28.4, reb: 3.8, ast: 7.2, fg_pct: 48.1 },
+    attributes: {
+      insideScoring: 88, outsideScoring: 85, playmaking: 90,
+      athleticism: 72, defending: 68, rebounding: 45
+    },
+    dissection: [
+      { category: "OFFENSE", trait: "Mid-range assassin", detail: "Brunson's pull-up jumper from 10-16 feet is the most reliable shot in the NBA. Defenders know it's coming. It doesn't matter." },
+      { category: "PLAYMAKING", trait: "Pick-and-roll maestro", detail: "Reads the defense before the screen arrives. His pocket passes to rolling bigs create easy buckets out of nothing." },
+      { category: "DEFENSE", trait: "Positional discipline", detail: "Won't get cooked off the dribble. Limited by size against bigger guards but compensates with positioning and anticipation." },
+      { category: "PHYSICALITY", trait: "Contact finishing", detail: "Absorbs contact at the rim better than guards 4 inches taller. Elite body control in traffic." },
+    ],
+    weaknesses: [
+      { trait: "Size limitations", detail: "At 6'1\", switchable defenses with length cause problems. Can be hunted in playoff matchups." },
+      { trait: "Three-point volume", detail: "Only 4.2 attempts per game from deep. Teams sag off and dare him to shoot." },
+    ],
+    scoutQuotes: [
+      { quote: "You can't game-plan for a guy who makes the right read every time. You can only hope he misses.", attribution: "Eastern Conference scout" },
+      { quote: "Best footwork for a guard since Nash. The mid-range game is vintage, but the efficiency is modern.", attribution: "NBA front office exec" },
+    ],
+    tags: ["CLUTCH", "ASCENDING", "FRANCHISE-CHANGER"],
+    recentGames: [
+      { date: "Mar 14", opp: "MIA", result: "W", pts: 34, reb: 4, ast: 8, plusMinus: 12 },
+      { date: "Mar 12", opp: "CHA", result: "W", pts: 31, reb: 3, ast: 6, plusMinus: 8 },
+      { date: "Mar 10", opp: "DET", result: "W", pts: 27, reb: 5, ast: 9, plusMinus: 15 },
+      { date: "Mar 8", opp: "IND", result: "L", pts: 33, reb: 2, ast: 7, plusMinus: -3 },
+      { date: "Mar 6", opp: "ORL", result: "W", pts: 24, reb: 4, ast: 11, plusMinus: 7 },
+    ],
+  },
+  // ... add 10-15 more players across different tiers and teams
+];
+
+// Season accuracy record
+export const SEASON_RECORD = {
+  wins: 187,
+  losses: 142,
+  pct: 56.8,
+  streak: "W4",
+  byConf: { HIGH: { w: 48, l: 19 }, MED: { w: 102, l: 83 }, COND: { w: 37, l: 40 } },
+};
+```
+
+---
+
+## Important Behavioral Notes
+
+1. **The Ask Bar is the hero interaction.** Every other feature supports it. Users come to Courtside to ask a question and get a quantified answer.
+
+2. **Every number is monospace.** Scores, odds, percentages, stats, records — all in JetBrains Mono. This is non-negotiable for the analytical precision feel.
+
+3. **Confidence tiers are color-coded everywhere.** HIGH = green, MED = amber, COND = gray. These colors appear on game cards, analysis results, and pick badges.
+
+4. **The accuracy record is always visible** in the header. This is Courtside's credibility — a running W-L record that proves the model works (or doesn't). Transparency is the brand.
+
+5. **Dark theme ONLY for player profile pages.** Everything else uses the light warm theme. The player profile ("shrine") pages use a near-black background (#0A0A0B) for cinematic impact.
+
+6. **"Educational analysis, not financial advice"** appears at the bottom of every analysis card and in the site footer. This is a legal necessity.
+
+7. **The editorial voice is Mamba Mentality** — decisive, specific, never hedging. Courtside doesn't say "OKC should probably win." It says "SGA drops 35 on a Dallas defense with no answer. HIGH confidence." Every take names a player, calls a shot, predicts a moment.
+
+8. **Mobile-first responsive design.** The ask bar, game cards, and analysis cards should all work beautifully on phone screens. The player profile page should stack vertically on mobile.
+
+---
+
+## Build Order
+
+1. Set up Next.js project with Tailwind, Google Fonts, and the color palette as Tailwind config
+2. Build the global shell (header + ticker)  
+3. Build the Tonight page with ask bar + game list
+4. Build the Analysis Card component with mock data
+5. Build the Players list page
+6. Build the Player Profile (shrine) page with dark theme
+7. Build the Arena page (basic blog layout)
+8. Add animations (fade-up on scroll, stagger on lists, shimmer on loading states, pulse on live indicators)
+9. Polish responsive breakpoints
+
+Start building. Focus on making it feel like a real product, not a prototype. The design quality should be high enough that an NBA fan would screenshot it and share it.
