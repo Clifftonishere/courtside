@@ -75,7 +75,7 @@ export function TeamLogo({
 
   return (
     <img
-      src={`https://cdn.nba.com/logos/nba/${teamId}/primary/L/logo.svg`}
+      src={`/api/nba-logo/${teamId}`}
       alt={abbr}
       width={size}
       height={size}
@@ -125,7 +125,7 @@ export function PlayerHeadshot({
 
   return (
     <img
-      src={`https://cdn.nba.com/headshots/nba/latest/1040x760/${playerId}.png`}
+      src={`/api/nba-headshot/${playerId}`}
       alt={playerName}
       width={size}
       height={size}
