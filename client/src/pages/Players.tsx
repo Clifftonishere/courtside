@@ -9,7 +9,7 @@ type Player = typeof PLAYERS[0];
 
 const PLAYER_IDS_MAP: Record<string, number> = {
   "sga": 1628983, "jokic": 203999, "wemby": 1641705,
-  "brunson": 1628384, "edwards": 1630162, "embiid": 203954,
+  "brunson": 1628973, "edwards": 1630162, "embiid": 203954,
   "giannis": 203507, "luka": 1629029, "bam": 1628389, "haliburton": 1630169,
 };
 

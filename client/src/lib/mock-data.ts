@@ -1093,7 +1093,7 @@ export const STAT_LEADERS = {
       value: 34,
       playerId: 1628983,
     },
-    { player: "Jalen Brunson", team: "NYK", value: 31, playerId: 1628384 },
+    { player: "Jalen Brunson", team: "NYK", value: 31, playerId: 1628973 },
     { player: "Nikola Jokic", team: "DEN", value: 29, playerId: 203999 },
   ],
   rebounds: [
@@ -1104,7 +1104,7 @@ export const STAT_LEADERS = {
   assists: [
     { player: "Tyrese Haliburton", team: "IND", value: 12, playerId: 1630169 },
     { player: "Nikola Jokic", team: "DEN", value: 11, playerId: 203999 },
-    { player: "Jalen Brunson", team: "NYK", value: 9, playerId: 1628384 },
+    { player: "Jalen Brunson", team: "NYK", value: 9, playerId: 1628973 },
   ],
   steals: [
     { player: "Alex Caruso", team: "OKC", value: 3, playerId: 1627936 },

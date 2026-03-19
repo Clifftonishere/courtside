@@ -9,7 +9,7 @@
 export const PLAYER_IDS: Record<string, number> = {
   "Shai Gilgeous-Alexander": 1628983, "SGA": 1628983,
   "Nikola Jokic": 203999, "Jokic": 203999,
-  "Jalen Brunson": 1628384, "Brunson": 1628384,
+  "Jalen Brunson": 1628973, "Brunson": 1628973,
   "Victor Wembanyama": 1641705, "Wembanyama": 1641705, "Wemby": 1641705,
   "Tyrese Haliburton": 1630169, "Haliburton": 1630169,
   "Anthony Edwards": 1630162, "Edwards": 1630162, "Ant": 1630162,

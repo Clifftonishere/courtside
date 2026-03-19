@@ -49,7 +49,7 @@ const MOCK_GAME_LOGS: Record<string, { opp: string; pts: number; reb: number; as
 };
 
 const PLAYER_IDS_MAP: Record<string, number> = {
-  "Jalen Brunson": 1628384, "Karl-Anthony Towns": 1626157, "OG Anunoby": 1628371,
+  "Jalen Brunson": 1628973, "Karl-Anthony Towns": 1626157, "OG Anunoby": 1628371,
   "Nikola Jokic": 203999, "Jamal Murray": 1627750, "Michael Porter Jr.": 1629008,
   "Anthony Edwards": 1630162, "Rudy Gobert": 203497, "Jaden McDaniels": 1630183,
   "LeBron James": 2544, "Austin Reaves": 1630559, "Luka Doncic": 1629029,

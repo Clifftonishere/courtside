@@ -19,7 +19,7 @@ const NBA_TEAM_IDS: Record<string, number> = {
   OKC: 1610612760, ORL: 1610612753, PHI: 1610612755, PHX: 1610612756,
   POR: 1610612757, SAC: 1610612758, SAS: 1610612759, TOR: 1610612761,
   UTA: 1610612762, WAS: 1610612764,
-};
+}
 
 type Tab = "active" | "resolved" | "my";
 
