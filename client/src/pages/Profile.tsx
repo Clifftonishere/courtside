@@ -78,7 +78,7 @@ export function Profile() {
           <div className="flex items-start gap-5">
             {/* Avatar */}
             <div className="w-20 h-20 rounded-full bg-[#1D428A] flex items-center justify-center flex-shrink-0">
-              <span className="font-condensed font-bold text-[28px] text-white uppercase">
+              <span className="font-condensed font-bold text-[32px] text-white uppercase tracking-[2px]">
                 {USER.name.split(" ").map(n => n[0]).join("")}
               </span>
             </div>
@@ -86,14 +86,14 @@ export function Profile() {
             {/* Name + info */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-3 mb-1 flex-wrap">
-                <h1 className="font-condensed font-bold text-[28px] text-white uppercase leading-none">{USER.name}</h1>
-                <span className="font-condensed font-bold text-[10px] uppercase tracking-[0.5px] px-2 py-1 rounded-sm"
-                  style={{ color: tierStyle.color, background: `${tierStyle.color}25` }}>
+                <h1 className="font-condensed font-bold text-[48px] text-white uppercase leading-none tracking-[2px]">{USER.name}</h1>
+                <span className="font-condensed font-bold text-[12px] uppercase tracking-[2px] px-3 py-1.5 rounded-sm border"
+                  style={{ color: tierStyle.color, background: `${tierStyle.color}20`, borderColor: `${tierStyle.color}60` }}>
                   {tierStyle.label}
                 </span>
               </div>
               <div className="flex items-center gap-3 flex-wrap">
-                <span className="font-mono text-[12px] text-white/40">@{USER.username}</span>
+                <span className="font-condensed font-bold text-[14px] text-white/50 tracking-[1px] uppercase">@{USER.username}</span>
                 {USER.twitter && (
                   <a href={`https://twitter.com/${USER.twitter.replace('@','')}`} target="_blank" rel="noreferrer"
                     className="flex items-center gap-1 font-mono text-[11px] text-white/40 hover:text-white transition-colors">
@@ -109,7 +109,7 @@ export function Profile() {
             </div>
 
             <button onClick={() => setEditing(!editing)}
-              className="font-condensed font-bold text-[11px] uppercase tracking-[0.5px] border border-[#333] text-[#888] px-3 py-1.5 rounded-sm hover:border-white hover:text-white transition-all flex-shrink-0">
+              className="font-condensed font-bold text-[12px] uppercase tracking-[2px] border border-[#444] text-[#888] px-4 py-2 rounded-sm hover:border-white hover:text-white transition-all flex-shrink-0">
               {editing ? "Save" : "Edit Profile"}
             </button>
           </div>
@@ -117,15 +117,15 @@ export function Profile() {
           {/* Stats row */}
           <div className="grid grid-cols-5 gap-3 mt-6">
             {[
-              { label: "Points", value: USER.points, color: "#F5A623" },
-              { label: "Rank", value: `#${USER.rank}`, color: "#F5A623" },
-              { label: "Accuracy", value: `${USER.accuracy}%`, color: "#008248" },
-              { label: "Streak", value: USER.streak, color: streakWin ? "#008248" : "#C8102E" },
-              { label: "Record", value: `${USER.wins}-${USER.losses}`, color: "#1D428A" },
+              { label: "PTS", value: USER.points, color: "#F5A623" },
+              { label: "RANK", value: `#${USER.rank}`, color: "#F5A623" },
+              { label: "ACC", value: `${USER.accuracy}%`, color: "#008248" },
+              { label: "STREAK", value: USER.streak, color: streakWin ? "#008248" : "#C8102E" },
+              { label: "RECORD", value: `${USER.wins}-${USER.losses}`, color: "#1D428A" },
             ].map((s) => (
-              <div key={s.label} className="text-center bg-white/5 rounded-lg py-3">
-                <div className="font-mono font-bold text-[22px] leading-none" style={{ color: s.color }}>{s.value}</div>
-                <div className="font-condensed font-bold text-[9px] uppercase text-white/30 tracking-[0.5px] mt-1">{s.label}</div>
+              <div key={s.label} className="text-center bg-white/5 rounded-lg py-4 px-2">
+                <div className="font-mono font-bold text-[30px] leading-none" style={{ color: s.color }}>{s.value}</div>
+                <div className="font-condensed font-bold text-[10px] uppercase text-white/40 tracking-[2px] mt-1.5">{s.label}</div>
               </div>
             ))}
           </div>
@@ -166,7 +166,7 @@ export function Profile() {
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <Star size={13} className="text-[#F5A623]" />
-                    <span className="font-condensed font-bold text-[13px] uppercase text-[#111] tracking-[0.5px]">Favourite Teams</span>
+                    <span className="font-condensed font-bold text-[15px] uppercase text-[#111] tracking-[2px]">Favourite Teams</span>
                   </div>
                   <button onClick={() => setShowTeamPicker(!showTeamPicker)}
                     className="flex items-center gap-1 font-condensed font-bold text-[11px] uppercase text-[#1D428A] border border-[#1D428A] px-2 py-1 rounded-sm hover:bg-[#1D428A] hover:text-white transition-all tracking-[0.5px]">
@@ -193,7 +193,7 @@ export function Profile() {
                     <div key={abbr} className="flex items-center gap-2 bg-white border border-[#E0E0E0] rounded-lg px-3 py-2.5 group">
                       <TeamLogo abbr={abbr} teamId={NBA_TEAM_IDS[abbr] || 0} size={32} />
                       <div>
-                        <div className="font-condensed font-bold text-[13px] text-[#111] uppercase">{abbr}</div>
+                        <div className="font-condensed font-bold text-[15px] text-[#111] uppercase tracking-[1px]">{abbr}</div>
                         <div className="flex items-center gap-1 mt-0.5">
                           <Bell size={9} className="text-[#008248]" />
                           <span className="font-mono text-[9px] text-[#008248]">Notified</span>
@@ -211,7 +211,7 @@ export function Profile() {
               <section>
                 <div className="flex items-center gap-2 mb-3">
                   <Star size={13} className="text-[#F5A623]" />
-                  <span className="font-condensed font-bold text-[13px] uppercase text-[#111] tracking-[0.5px]">Favourite Players</span>
+                  <span className="font-condensed font-bold text-[15px] uppercase text-[#111] tracking-[2px]">Favourite Players</span>
                 </div>
                 <div className="flex flex-wrap gap-3">
                   {favPlayers.map(p => (
@@ -249,7 +249,7 @@ export function Profile() {
             <div className="space-y-4">
               <div className="bg-white border border-[#E0E0E0] rounded-lg overflow-hidden">
                 <div className="px-4 py-3 border-b border-[#E0E0E0] bg-[#F5F5F5]">
-                  <span className="font-condensed font-bold text-[12px] uppercase text-[#111] tracking-[0.5px]">Profile Details</span>
+                  <span className="font-condensed font-bold text-[14px] uppercase text-[#111] tracking-[2px]">Profile Details</span>
                 </div>
                 <div className="p-4 space-y-3">
                   {[
