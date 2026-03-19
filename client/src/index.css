@@ -48,10 +48,11 @@
   --chart-4: 349 83% 42%;
   --chart-5: 270 70% 50%;
 
-  --font-sans: 'Source Sans 3', sans-serif;
+  --font-sans: 'Barlow', sans-serif;
   --font-serif: Georgia, serif;
-  --font-mono: 'IBM Plex Mono', monospace;
+  --font-mono: 'Bebas Neue', 'IBM Plex Mono', monospace;
   --font-condensed: 'Barlow Condensed', sans-serif;
+  --font-display: 'Bebas Neue', sans-serif;
   --radius: .375rem; /* 6px — ESPN uses tight rounding */
   --shadow-2xs: 0px 1px 2px 0px rgba(0,0,0,0.05);
   --shadow-xs: 0px 1px 3px 0px rgba(0,0,0,0.07);
@@ -237,4 +238,31 @@
   .border.active-elevate:not(.no-active-interaction-elevate)::after,
   .border.hover-elevate-2:not(.no-hover-interaction-elevate)::after,
   .border.active-elevate-2:not(.no-active-interaction-elevate)::after { inset: -1px; }
+}
+
+/* ── Courtside Typography System ───────────────────────────────────────── */
+/* Bebas Neue — scoreboard numbers, big stats, scores                       */
+/* Barlow Condensed ExtraBold — headlines, player names, labels             */
+/* Barlow — body text                                                        */
+
+/* Override font-mono to use Bebas Neue for stat numbers */
+.font-mono {
+  font-family: 'Bebas Neue', 'IBM Plex Mono', monospace;
+  letter-spacing: 0.03em;
+}
+
+/* Condensed gets max weight options */
+.font-condensed {
+  font-family: 'Barlow Condensed', sans-serif;
+}
+
+/* Display alias for biggest moments */
+.font-display {
+  font-family: 'Bebas Neue', sans-serif;
+  letter-spacing: 0.04em;
+}
+
+/* Body upgrade */
+body {
+  font-family: 'Barlow', sans-serif;
 }
