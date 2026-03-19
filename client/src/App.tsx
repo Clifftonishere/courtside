@@ -8,40 +8,42 @@ import { Ticker } from "@/components/Ticker";
 import { Tonight } from "@/pages/Tonight";
 import { Players } from "@/pages/Players";
 import { PlayerProfile } from "@/pages/PlayerProfile";
+import { GameDetail } from "@/pages/GameDetail";
 import { Arena } from "@/pages/Arena";
 import { Polls } from "@/pages/Polls";
 import { LeaderboardPage } from "@/pages/LeaderboardPage";
+import { GAMES } from "@/lib/mock-data";
 
 function AppContent() {
   const [activePage, setActivePage] = useState<Page>("tonight");
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
+  const [selectedGameId, setSelectedGameId] = useState<string | null>(null);
 
   const handlePageChange = (page: Page) => {
     setActivePage(page);
     setSelectedPlayerId(null);
+    setSelectedGameId(null);
   };
 
-  const handlePlayerSelect = (id: string) => {
-    setSelectedPlayerId(id);
-  };
-
-  const handleBackToPlayers = () => {
-    setSelectedPlayerId(null);
-  };
+  const selectedGame = selectedGameId ? GAMES.find(g => g.id === selectedGameId) : null;
 
   return (
     <div className="min-h-screen bg-white">
       <Header activePage={activePage} onPageChange={handlePageChange} />
       <Ticker />
 
-      {/* Content pushed below fixed header (48px) + ticker (32px) = 80px */}
       <div style={{ paddingTop: 80 }}>
-        {activePage === "tonight" && <Tonight />}
+        {activePage === "tonight" && !selectedGameId && (
+          <Tonight onGameSelect={(id) => setSelectedGameId(id)} />
+        )}
+        {activePage === "tonight" && selectedGameId && selectedGame && (
+          <GameDetail game={selectedGame as any} onBack={() => setSelectedGameId(null)} />
+        )}
         {activePage === "players" && !selectedPlayerId && (
-          <Players onPlayerSelect={handlePlayerSelect} />
+          <Players onPlayerSelect={(id) => setSelectedPlayerId(id)} />
         )}
         {activePage === "players" && selectedPlayerId && (
-          <PlayerProfile playerId={selectedPlayerId} onBack={handleBackToPlayers} />
+          <PlayerProfile playerId={selectedPlayerId} onBack={() => setSelectedPlayerId(null)} />
         )}
         {activePage === "polls" && <Polls />}
         {activePage === "arena" && <Arena />}
