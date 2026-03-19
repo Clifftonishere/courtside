@@ -8,6 +8,7 @@ import { PollCard } from "@/components/PollCard";
 import { SectionHeader } from "@/components/SectionHeader";
 import { useNBAGames, generateCallsFromGames } from "@/hooks/use-nba-games.ts";
 import { GAMES as MOCK_GAMES, ACTIVE_POLLS as MOCK_POLLS } from "@/lib/mock-data";
+import { useEdgeCalls } from "@/hooks/use-edge-calls";
 import { RefreshCw, Wifi, WifiOff, ChevronRight } from "lucide-react";
 
 const CONF_COLORS: Record<string, string> = {
@@ -20,10 +21,11 @@ interface TonightProps {
 
 export function Tonight({ onGameSelect }: TonightProps) {
   const { games: liveGames, loading, error, lastUpdated, hasLiveGames, refetch } = useNBAGames();
+  const { calls: edgeCalls, isLive: edgeIsLive } = useEdgeCalls();
 
   const games = liveGames.length > 0 ? liveGames : MOCK_GAMES;
   const isLiveData = liveGames.length > 0;
-  const polls = isLiveData ? generateCallsFromGames(liveGames).slice(0, 4) : MOCK_POLLS;
+  const polls = edgeCalls.length > 0 ? edgeCalls.slice(0, 4) : (isLiveData ? generateCallsFromGames(liveGames).slice(0, 4) : MOCK_POLLS);
   const today = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 
   return (
@@ -132,7 +134,7 @@ export function Tonight({ onGameSelect }: TonightProps) {
                 </a>
               </div>
               <p className="font-sans text-[12px] text-[#888] mb-3">
-                {isLiveData ? "Auto-generated from tonight's real games." : "Vote with the analysis or fade it."} Earn points when you're right.
+                {edgeIsLive ? "Live-priced by Edge model." : isLiveData ? "Auto-generated from tonight's real games." : "Vote with the analysis or fade it."} Earn points when you're right.
               </p>
               <div className="space-y-3">
                 {polls.slice(0, 4).map((poll) => (

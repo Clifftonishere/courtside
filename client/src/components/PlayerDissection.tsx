@@ -63,49 +63,14 @@ function AttributeBar({ label, value }: { label: string; value: number }) {
 }
 
 async function generateDissection(playerName: string, teamAbbr: string, pts: number, reb: number, ast: number): Promise<DissectionProfile> {
-  const systemPrompt = `You are Caesar — the sharpest basketball mind on the planet. You're writing a definitive scouting dissection on an NBA player. Output MUST be valid JSON only — no markdown, no backticks, no preamble.
-
-{
-  "identity": "string (max 80 chars — THE defining sentence. Bold, editorial, memorable.)",
-  "scoutingReport": "string (2-3 paragraphs, pure basketball editorial voice)",
-  "traits": [
-    { "category": "OFFENSE|DEFENSE|PLAYMAKING|PHYSICALITY|INTANGIBLES", "label": "string", "editorial": "string (1-2 sentences)" }
-  ],
-  "weaknesses": [
-    { "area": "string (exploitable weakness label)", "detail": "string (HOW opponents exploit this — specific, actionable)" }
-  ],
-  "scoutingQuotes": ["string (3 quotes written as scouts talking about this player)"],
-  "attributes": { "insideScoring": 0-99, "outsideScoring": 0-99, "playmaking": 0-99, "athleticism": 0-99, "defending": 0-99, "rebounding": 0-99 },
-  "ovr": 0-99,
-  "tendencies": [
-    { "playType": "string", "frequency": 0-100, "pointsPerPossession": 1.0-1.3, "percentile": 0-99 }
-  ],
-  "tags": ["ASCENDING|BREAKOUT|CLUTCH|UNDERRATED|LOCKED-IN|DECLINING|FRANCHISE-CHANGER (pick 1-2)"]
-}
-
-OVR calibration: 97+=historic, 93-96=MVP-level, 88-92=All-Star, 82-87=starter, 75-81=rotation
-Include 3-5 traits, 2-3 weaknesses, 3 scouting quotes, 3-5 tendencies.
-Write with conviction. Be specific. No generic praise.`;
-
-  const userPrompt = `Generate a scouting dissection for ${playerName} (${teamAbbr}).
-Season averages: ${pts} PPG, ${reb} RPG, ${ast} APG.
-Write as if you've studied every game film. Be specific about their game.`;
-
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
+  const response = await fetch("/api/claude/dissection", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 1000,
-      system: systemPrompt,
-      messages: [{ role: "user", content: userPrompt }],
-    }),
+    body: JSON.stringify({ playerName, teamAbbr, pts, reb, ast }),
   });
 
-  const data = await response.json();
-  const text = data.content?.find((c: any) => c.type === "text")?.text || "";
-  const clean = text.replace(/```json|```/g, "").trim();
-  return JSON.parse(clean);
+  if (!response.ok) throw new Error("Server error");
+  return await response.json();
 }
 
 interface PlayerDissectionProps {
