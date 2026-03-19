@@ -1,7 +1,7 @@
-import { Trophy } from "lucide-react";
+import { Trophy, User } from "lucide-react";
 import { SEASON_RECORD } from "@/lib/mock-data";
 
-export type Page = "tonight" | "players" | "polls" | "arena" | "leaderboard";
+export type Page = "tonight" | "players" | "polls" | "arena" | "leaderboard" | "profile";
 
 interface HeaderProps {
   activePage: Page;
@@ -13,6 +13,7 @@ const NAV_ITEMS: { id: Page; label: string }[] = [
   { id: "players", label: "Players" },
   { id: "polls", label: "Polls" },
   { id: "arena", label: "Arena" },
+  { id: "profile", label: "Profile" },
 ];
 
 export function Header({ activePage, onPageChange }: HeaderProps) {
@@ -41,13 +42,9 @@ export function Header({ activePage, onPageChange }: HeaderProps) {
                 key={item.id}
                 onClick={() => onPageChange(item.id)}
                 data-testid={`nav-${item.id}`}
-                className={`
-                  font-condensed font-semibold text-[13px] uppercase tracking-[0.5px] px-3 py-1.5 transition-all rounded-sm
-                  ${isActive
-                    ? "bg-[#1D428A] text-white"
-                    : "text-[#999] hover:text-white hover:bg-white/10"
-                  }
-                `}
+                className={`font-condensed font-semibold text-[13px] uppercase tracking-[0.5px] px-3 py-1.5 transition-all rounded-sm ${
+                  isActive ? "bg-[#1D428A] text-white" : "text-[#999] hover:text-white hover:bg-white/10"
+                }`}
               >
                 {item.label}
               </button>
@@ -55,7 +52,7 @@ export function Header({ activePage, onPageChange }: HeaderProps) {
           })}
         </nav>
 
-        {/* Right: record + leaderboard */}
+        {/* Right: record + board + profile avatar */}
         <div className="flex items-center gap-3">
           <div className="hidden sm:flex items-center gap-1 font-mono text-[12px]">
             <span className="text-[#008248] font-semibold">{wins}</span>
@@ -64,24 +61,23 @@ export function Header({ activePage, onPageChange }: HeaderProps) {
             <span className="text-[#555] mx-1">·</span>
             <span className="text-[#888]">{pct}%</span>
             <span className="text-[#555] mx-1">·</span>
-            <span className={streakIsWin ? "text-[#008248] font-semibold" : "text-[#C8102E] font-semibold"}>
-              {streak}
-            </span>
+            <span className={streakIsWin ? "text-[#008248] font-semibold" : "text-[#C8102E] font-semibold"}>{streak}</span>
           </div>
 
-          <button
-            onClick={() => onPageChange("leaderboard")}
-            data-testid="nav-leaderboard"
-            className={`
-              flex items-center gap-1.5 font-condensed font-semibold text-[12px] uppercase tracking-[0.5px] px-2.5 py-1 rounded-sm transition-all border
-              ${activePage === "leaderboard"
-                ? "bg-[#F5A623] text-[#111] border-[#F5A623]"
-                : "text-[#888] border-[#333] hover:text-[#F5A623] hover:border-[#F5A623]"
-              }
-            `}
-          >
+          <button onClick={() => onPageChange("leaderboard")} data-testid="nav-leaderboard"
+            className={`flex items-center gap-1.5 font-condensed font-semibold text-[12px] uppercase tracking-[0.5px] px-2.5 py-1 rounded-sm transition-all border ${
+              activePage === "leaderboard" ? "bg-[#F5A623] text-[#111] border-[#F5A623]" : "text-[#888] border-[#333] hover:text-[#F5A623] hover:border-[#F5A623]"
+            }`}>
             <Trophy size={11} />
             <span className="hidden md:inline">Board</span>
+          </button>
+
+          {/* Profile avatar button */}
+          <button onClick={() => onPageChange("profile")} data-testid="nav-profile"
+            className={`w-7 h-7 rounded-full flex items-center justify-center transition-all ${
+              activePage === "profile" ? "bg-[#1D428A]" : "bg-[#333] hover:bg-[#444]"
+            }`}>
+            <span className="font-condensed font-bold text-[10px] text-white uppercase">CL</span>
           </button>
         </div>
       </div>

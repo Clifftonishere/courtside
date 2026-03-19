@@ -11,6 +11,7 @@ import { PlayerProfile } from "@/pages/PlayerProfile";
 import { GameDetail } from "@/pages/GameDetail";
 import { Arena } from "@/pages/Arena";
 import { Polls } from "@/pages/Polls";
+import { Profile } from "@/pages/Profile";
 import { LeaderboardPage } from "@/pages/LeaderboardPage";
 import { GAMES } from "@/lib/mock-data";
 
@@ -53,6 +54,7 @@ function AppContent() {
         )}
         {activePage === "polls" && <Polls />}
         {activePage === "arena" && <Arena />}
+        {activePage === "profile" && <Profile />}
         {activePage === "leaderboard" && <LeaderboardPage />}
       </div>
     </div>
