@@ -25,16 +25,22 @@ function AppContent() {
     setSelectedGameId(null);
   };
 
+  const handleGameSelect = (id: string) => {
+    setSelectedGameId(id);
+    setActivePage("tonight");
+    setSelectedPlayerId(null);
+  };
+
   const selectedGame = selectedGameId ? GAMES.find(g => g.id === selectedGameId) : null;
 
   return (
     <div className="min-h-screen bg-white">
       <Header activePage={activePage} onPageChange={handlePageChange} />
-      <Ticker />
+      <Ticker onGameSelect={handleGameSelect} />
 
       <div style={{ paddingTop: 80 }}>
         {activePage === "tonight" && !selectedGameId && (
-          <Tonight onGameSelect={(id) => setSelectedGameId(id)} />
+          <Tonight onGameSelect={handleGameSelect} />
         )}
         {activePage === "tonight" && selectedGameId && selectedGame && (
           <GameDetail game={selectedGame as any} onBack={() => setSelectedGameId(null)} />

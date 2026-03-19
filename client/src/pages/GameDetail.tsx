@@ -1,16 +1,7 @@
 import { ArrowLeft, Users, TrendingUp, Shield } from "lucide-react";
 import { TeamLogo, PlayerHeadshot } from "@/components/TeamLogo";
 import { PollCard } from "@/components/PollCard";
-const NBA_TEAM_IDS: Record<string, number> = {
-  ATL: 1610612737, BOS: 1610612738, BKN: 1610612751, CHA: 1610612766,
-  CHI: 1610612741, CLE: 1610612739, DAL: 1610612742, DEN: 1610612743,
-  DET: 1610612765, GSW: 1610612744, HOU: 1610612745, IND: 1610612754,
-  LAC: 1610612746, LAL: 1610612747, MEM: 1610612763, MIA: 1610612748,
-  MIL: 1610612749, MIN: 1610612750, NOP: 1610612740, NYK: 1610612752,
-  OKC: 1610612760, ORL: 1610612753, PHI: 1610612755, PHX: 1610612756,
-  POR: 1610612757, SAC: 1610612758, SAS: 1610612759, TOR: 1610612761,
-  UTA: 1610612762, WAS: 1610612764,
-};
+import { NBA_TEAM_IDS } from "@/lib/player-ids";
 import { ACTIVE_POLLS, PLAYERS, type ConfTier } from "@/lib/mock-data";
 
 // Coaching tendencies per team
@@ -49,12 +40,32 @@ const MOCK_GAME_LOGS: Record<string, { opp: string; pts: number; reb: number; as
 };
 
 const PLAYER_IDS_MAP: Record<string, number> = {
+  // NYK
   "Jalen Brunson": 1628973, "Karl-Anthony Towns": 1626157, "OG Anunoby": 1628371,
+  // BOS
+  "Jayson Tatum": 1628369, "Jaylen Brown": 1627759, "Jrue Holiday": 203200,
+  // DEN
   "Nikola Jokic": 203999, "Jamal Murray": 1627750, "Michael Porter Jr.": 1629008,
+  // MIN
   "Anthony Edwards": 1630162, "Rudy Gobert": 203497, "Jaden McDaniels": 1630183,
+  // LAL
   "LeBron James": 2544, "Austin Reaves": 1630559, "Luka Doncic": 1629029,
+  // GSW
   "Stephen Curry": 201939, "Jonathan Kuminga": 1630228, "Brandin Podziemski": 1641730,
+  // HOU
   "Jalen Green": 1630224, "Alperen Sengun": 1631167, "Kevin Durant": 201142,
+  // MIL
+  "Giannis Antetokounmpo": 203507, "Damian Lillard": 203081, "Khris Middleton": 203114,
+  // PHX
+  "Devin Booker": 1626164,
+  // DAL
+  "Kyrie Irving": 202681, "PJ Washington": 1629023,
+  // CLE
+  "Donovan Mitchell": 1628378, "Darius Garland": 1629636, "Evan Mobley": 1630596,
+  // MIA
+  "Jimmy Butler": 202710, "Bam Adebayo": 1628389, "Tyler Herro": 1629639,
+  // TOR
+  "Scottie Barnes": 1630567, "Immanuel Quickley": 1630193, "RJ Barrett": 1629628,
 };
 
 // Notable players per team
