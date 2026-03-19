@@ -1,7 +1,16 @@
 import { ArrowLeft, Users, TrendingUp, Shield } from "lucide-react";
 import { TeamLogo, PlayerHeadshot } from "@/components/TeamLogo";
 import { PollCard } from "@/components/PollCard";
-import { NBA_TEAM_IDS } from "@/lib/player-ids";
+const NBA_TEAM_IDS: Record<string, number> = {
+  ATL: 1610612737, BOS: 1610612738, BKN: 1610612751, CHA: 1610612766,
+  CHI: 1610612741, CLE: 1610612739, DAL: 1610612742, DEN: 1610612743,
+  DET: 1610612765, GSW: 1610612744, HOU: 1610612745, IND: 1610612754,
+  LAC: 1610612746, LAL: 1610612747, MEM: 1610612763, MIA: 1610612748,
+  MIL: 1610612749, MIN: 1610612750, NOP: 1610612740, NYK: 1610612752,
+  OKC: 1610612760, ORL: 1610612753, PHI: 1610612755, PHX: 1610612756,
+  POR: 1610612757, SAC: 1610612758, SAS: 1610612759, TOR: 1610612761,
+  UTA: 1610612762, WAS: 1610612764,
+};
 import { ACTIVE_POLLS, PLAYERS, type ConfTier } from "@/lib/mock-data";
 
 // Coaching tendencies per team
@@ -40,7 +49,7 @@ const MOCK_GAME_LOGS: Record<string, { opp: string; pts: number; reb: number; as
 };
 
 const PLAYER_IDS_MAP: Record<string, number> = {
-  "Jalen Brunson": 1628384, "Karl-Anthony Towns": 1626157, "OG Anunoby": 1628384,
+  "Jalen Brunson": 1628384, "Karl-Anthony Towns": 1626157, "OG Anunoby": 1628371,
   "Nikola Jokic": 203999, "Jamal Murray": 1627750, "Michael Porter Jr.": 1629008,
   "Anthony Edwards": 1630162, "Rudy Gobert": 203497, "Jaden McDaniels": 1630183,
   "LeBron James": 2544, "Austin Reaves": 1630559, "Luka Doncic": 1629029,
