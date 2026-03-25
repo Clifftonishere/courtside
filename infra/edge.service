@@ -1,0 +1,15 @@
+# edge.service — Edge Protocol pricing engine
+[Unit]
+Description=Edge Protocol Pricing Engine
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/root/.openclaw/workspace/projects/edge-protocol
+EnvironmentFile=/root/.openclaw/workspace/projects/edge-protocol/.env
+ExecStart=/usr/bin/node server.js
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

@@ -1,6 +1,31 @@
-node_modules
-dist
+# Dependencies
+node_modules/
+.next/
+__pycache__/
+
+# Environment & secrets
+.env
+.env.local
+.env.production
+
+# Private pricing engine (maintained in separate private repo)
+edge/odds-agent.js
+edge/pricing.js
+edge/calc.js
+edge/market.js
+edge/form.js
+edge/batch-price.js
+edge/context.js
+
+# Data files (large / contains prediction history)
+edge/data/
+edge/context/
+*.jsonl
+
+# OS
 .DS_Store
-server/public
-vite.config.ts.*
-*.tar.gz
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
