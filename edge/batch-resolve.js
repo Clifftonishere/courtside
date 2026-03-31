@@ -12,6 +12,7 @@ const fs    = require('fs');
 const path  = require('path');
 
 const { resolvePrediction, loadAll } = require('./logger');
+const { matchBoxScore, normalize: normalizeName } = require('./player-names');
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const CHAT_ID   = process.env.TELEGRAM_CHAT_ID;
@@ -230,18 +231,18 @@ function resolvebet(bet, logged, boxes) {
   if (!box) return { resolved: false, reason: 'no_box_score' };
 
   if (stat === 'game_win' || bet.type === 'winner') {
-    const teamKw = (player||'').toLowerCase();
+    const teamNorm = normalizeName(player || '');
     const won = box.winner && (
-      box.winner === toAbbr(player) ||
-      box.home_team?.toLowerCase().includes(teamKw) && box.home_score > box.away_score ||
-      box.away_team?.toLowerCase().includes(teamKw) && box.away_score > box.home_score
+      (box.winner === toAbbr(player)) ||
+      (normalizeName(box.home_team || '').includes(teamNorm) && box.home_score > box.away_score) ||
+      (normalizeName(box.away_team || '').includes(teamNorm) && box.away_score > box.home_score)
     );
     return { resolved: true, outcome: !!won, actual_value: box.winner };
   }
 
   if (stat === 'spread' || bet.type === 'spread') {
-    const teamKw = (player||'').toLowerCase();
-    const isHome = box.home_team && box.home_team.toLowerCase().includes(teamKw.slice(-3).toLowerCase());
+    const abbr = toAbbr(player);
+    const isHome = abbr === box.home_team;
     const margin = isHome ? box.home_margin : -box.home_margin;
     const covered = margin > (threshold || 0);
     return { resolved: true, outcome: covered, actual_value: margin };
@@ -264,8 +265,7 @@ function resolvebet(bet, logged, boxes) {
   }
 
   if (stat === 'double_double' || bet.type === 'double_double') {
-    const lastName = (player||'').split(' ').pop().toLowerCase();
-    const p = box.players.find(pl => pl.name.toLowerCase().includes(lastName));
+    const p = matchBoxScore(player, box.players);
     if (!p) return { resolved: false, reason: 'player_not_found' };
     const dd = p.pts >= 10 && p.reb >= 10;
     return { resolved: true, outcome: dd, actual_value: `${p.pts}pts/${p.reb}reb` };
@@ -276,11 +276,7 @@ function resolvebet(bet, logged, boxes) {
   const field = statMap[stat];
   if (!field) return { resolved: false, reason: `unknown_stat:${stat}` };
 
-  const lastName = (player||'').split(' ').pop().toLowerCase().replace(/[^a-z]/g,'');
-  const playerRow = box.players.find(p => {
-    const pLastName = p.name.split(' ').pop().toLowerCase().replace(/[^a-z]/g,'');
-    return pLastName.includes(lastName) || lastName.includes(pLastName);
-  });
+  const playerRow = matchBoxScore(player, box.players);
 
   if (!playerRow) return { resolved: false, reason: 'player_not_found' };
 
@@ -365,22 +361,6 @@ async function main() {
       results.push({ ...bet, outcome: null, resolved: false, reason: r.reason });
     }
   }
-
-  // ── Write outcomes back to bet file ─────────────────────────────────────
-  try {
-    const updatedBetData = JSON.parse(fs.readFileSync(betFile));
-    const resultMap = {};
-    for (const r of results) resultMap[r.id] = r;
-    updatedBetData.predictions = updatedBetData.predictions.map(p => {
-      const r = resultMap[p.id];
-      if (r && r.outcome !== null && r.outcome !== undefined) {
-        return { ...p, outcome: r.outcome ? 'won' : 'lost', actual_value: r.actual_value, resolved_at: new Date().toISOString() };
-      }
-      return p;
-    });
-    fs.writeFileSync(betFile, JSON.stringify(updatedBetData, null, 2));
-    console.log(`  ✅ Outcomes written back to ${betFile}`);
-  } catch(e) { console.error('  ⚠️ Could not write outcomes back:', e.message); }
 
   // ── Write outcomes back to bet file ─────────────────────────────────────
   try {

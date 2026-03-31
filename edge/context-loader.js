@@ -284,6 +284,98 @@ function normName(s) {
     .replace(/[^a-z ]/g, '').trim();
 }
 
+// ── Analyst consensus ────────────────────────────────────────────────────────
+/**
+ * Returns a Map of "AWAY@HOME" game key → analyst_consensus object.
+ * Reads ctx.analyst_takes written by analyst-ingestion.js.
+ */
+function buildAnalystMap(ctx) {
+  const analystMap = new Map();
+  if (!ctx || !ctx.analyst_takes || !Array.isArray(ctx.analyst_takes) || ctx.analyst_takes.length === 0) {
+    return analystMap;
+  }
+
+  for (const take of ctx.analyst_takes) {
+    const away = (take.away_team || '').toUpperCase();
+    const home = (take.home_team || '').toUpperCase();
+    if (!away || !home) continue;
+
+    const key = `${away}@${home}`;
+
+    // Accumulate takes per game
+    if (!analystMap.has(key)) {
+      analystMap.set(key, {
+        direction: 'split',
+        strength: 0.0,
+        source_count: 0,
+        sharp_alignment: false,
+        notable_takes: [],
+        prop_mentions: [],
+        risk_flags: [],
+      });
+    }
+
+    const consensus = analystMap.get(key);
+    consensus.source_count += 1;
+
+    // Merge notable takes
+    if (take.source && take.take) {
+      consensus.notable_takes.push({
+        source: take.source,
+        take: take.take,
+        confidence: take.confidence || 'medium',
+      });
+    }
+
+    // Merge prop mentions
+    if (Array.isArray(take.prop_mentions)) {
+      for (const pm of take.prop_mentions) {
+        consensus.prop_mentions.push({
+          player: pm.player || '',
+          direction: pm.direction || '',
+          stat: pm.stat || '',
+          reason: pm.reason || '',
+        });
+      }
+    }
+
+    // Merge risk flags
+    if (Array.isArray(take.risk_flags)) {
+      for (const flag of take.risk_flags) {
+        if (!consensus.risk_flags.includes(flag)) {
+          consensus.risk_flags.push(flag);
+        }
+      }
+    }
+
+    // Update direction and strength from aggregate
+    if (take.direction === 'home' || take.direction === 'away') {
+      consensus.direction = take.direction;
+    }
+    if (typeof take.strength === 'number') {
+      consensus.strength = Math.max(consensus.strength, take.strength);
+    }
+    if (take.sharp_alignment !== undefined) {
+      consensus.sharp_alignment = take.sharp_alignment;
+    }
+  }
+
+  return analystMap;
+}
+
+/**
+ * Look up analyst consensus for a game, trying both key orderings.
+ * @param {Map} analystMap
+ * @param {string} homeAbbr
+ * @param {string} awayAbbr
+ * @returns {object|null}
+ */
+function getAnalystConsensus(analystMap, homeAbbr, awayAbbr) {
+  return analystMap.get(`${awayAbbr}@${homeAbbr}`)
+      || analystMap.get(`${homeAbbr}@${awayAbbr}`)
+      || null;
+}
+
 // ── Build context summary for Telegram ───────────────────────────────────────
 function buildContextSummary(ctx, outMap, divergences) {
   if (!ctx && outMap.size === 0 && divergences.length === 0) return null;
@@ -319,6 +411,8 @@ module.exports = {
   buildConsensusMap,
   getConsensus,
   getSentiment,
+  buildAnalystMap,
+  getAnalystConsensus,
   injuryConfidenceAdj,
   buildContextSummary,
   normName,
