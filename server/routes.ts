@@ -149,6 +149,41 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // ── Edge VPS — Analyze (natural language game analysis) ─────────────────
+  app.post("/api/edge/analyze", async (req, res) => {
+    try {
+      const response = await new Promise<any>((resolve, reject) => {
+        const body = JSON.stringify(req.body);
+        const options = {
+          hostname: "5.223.72.173",
+          port: 3747,
+          path: "/analyze",
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Content-Length": Buffer.byteLength(body),
+            "x-api-key": "edge-dev-key",
+          },
+        };
+        const proxyReq = http.request(options, (proxyRes) => {
+          let data = "";
+          proxyRes.on("data", (chunk) => (data += chunk));
+          proxyRes.on("end", () => {
+            try { resolve(JSON.parse(data)); }
+            catch (e) { reject(e); }
+          });
+        });
+        proxyReq.on("error", reject);
+        proxyReq.setTimeout(60000, () => { proxyReq.destroy(); reject(new Error("Timeout")); });
+        proxyReq.write(body);
+        proxyReq.end();
+      });
+      res.json(response);
+    } catch (e: any) {
+      res.status(503).json({ error: "Edge analysis unavailable", detail: e.message });
+    }
+  });
+
   // ── Edge VPS — Accuracy stats ──────────────────────────────────────────
   app.get("/api/edge/accuracy", async (req, res) => {
     try {

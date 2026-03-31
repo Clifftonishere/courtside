@@ -23,6 +23,10 @@ const http = require('http');
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const CHAT_ID   = process.env.TELEGRAM_CHAT_ID;
+const ALLOWED_CHAT_IDS = new Set([
+  CHAT_ID,
+  '534189652', // brother (@Kahyonggg)
+].filter(Boolean));
 const API_KEY   = process.env.EDGE_API_KEY || 'edge-dev-key';
 const EDGE_URL  = 'http://localhost:3747';
 
@@ -54,12 +58,14 @@ function tgRequest(method, params) {
   });
 }
 
+let _activeChatId = null; // tracks which chat to respond to
+
 function sendMessage(text, extra = {}) {
-  return tgRequest('sendMessage', { chat_id: CHAT_ID, text, parse_mode: 'Markdown', ...extra });
+  return tgRequest('sendMessage', { chat_id: _activeChatId || CHAT_ID, text, parse_mode: 'Markdown', ...extra });
 }
 
 function sendTyping() {
-  return tgRequest('sendChatAction', { chat_id: CHAT_ID, action: 'typing' });
+  return tgRequest('sendChatAction', { chat_id: _activeChatId || CHAT_ID, action: 'typing' });
 }
 
 // ── Edge API helpers ─────────────────────────────────────
@@ -379,53 +385,44 @@ let offset = 0;
 async function handleChat(text) {
   await sendTyping();
   try {
-    const today = new Date().toISOString().split('T')[0];
-    let ctxSummary = '';
-    try {
-      // Try today's context, fall back to most recent available
-      let ctxFile = path.join(DATA_DIR, '../context/nba-context-' + today + '.json');
-      if (!fs.existsSync(ctxFile)) {
-        const files = fs.readdirSync(path.join(DATA_DIR, '../context')).filter(f => f.startsWith('nba-context-') && f.endsWith('.json')).sort();
-        if (files.length) ctxFile = path.join(DATA_DIR, '../context', files[files.length-1]);
-      }
-      const ctx = JSON.parse(fs.readFileSync(ctxFile, 'utf8'));
-      const games = (ctx.games_today || []).map(g => g.away_team + ' @ ' + g.home_team + ' (' + g.game_time + ')').join(', ');
-      const injuries = (ctx.injured_key_players || []).map(p => p.name + ' (' + p.team + ') - ' + p.status).join(', ');
-      const stats = Object.entries(ctx.team_stats_last10 || {}).slice(0,20).map(([t,s]) => t + ': pts=' + s.pts_pg + ' off=' + s.off_rtg + ' def=' + s.def_rtg).join(', ');
-      ctxSummary = '\n\nTODAY NBA CONTEXT (' + today + '):\nGames: ' + (games || 'none') + '\nKey Injuries: ' + (injuries || 'none reported') + '\nTeam stats (last 10): ' + (stats || 'unavailable');
-      if (ctx.jarvis_instructions) ctxSummary += '\nInstructions: ' + ctx.jarvis_instructions;
-    } catch(e) {}
-    try {
-      const summaries = JSON.parse(fs.readFileSync(path.join(DATA_DIR, 'player_summaries.json'), 'utf8'));
-      const teamsInText = ['ATL','BKN','BOS','CHA','CHI','CLE','DAL','DEN','DET','GSW','HOU','IND','LAC','LAL','MEM','MIA','MIL','MIN','NOP','NYK','OKC','ORL','PHI','PHX','POR','SAC','SAS','TOR','UTA','WAS'];
-      const mentioned = teamsInText.filter(t => text.toUpperCase().includes(t) || (t==='LAL' && /lakers/i.test(text)) || (t==='GSW' && /warriors/i.test(text)) || (t==='BOS' && /celtics/i.test(text)) || (t==='NYK' && /knicks/i.test(text)) || (t==='MIA' && /heat/i.test(text)) || (t==='DEN' && /nuggets/i.test(text)) || (t==='SAS' && /spurs/i.test(text)) || (t==='PHI' && /sixers/i.test(text)) || (t==='MIL' && /bucks/i.test(text)) || (t==='PHX' && /suns/i.test(text)) || (t==='LAC' && /clippers/i.test(text)) || (t==='CLE' && /cavaliers|cavs/i.test(text)) || (t==='OKC' && /thunder/i.test(text)) || (t==='MEM' && /grizzlies/i.test(text)) || (t==='NOP' && /pelicans/i.test(text)) || (t==='SAC' && /kings/i.test(text)) || (t==='MIN' && /timberwolves|wolves/i.test(text)) || (t==='IND' && /pacers/i.test(text)) || (t==='ATL' && /hawks/i.test(text)) || (t==='CHA' && /hornets/i.test(text)) || (t==='ORL' && /magic/i.test(text)) || (t==='TOR' && /raptors/i.test(text)) || (t==='CHI' && /bulls/i.test(text)) || (t==='DET' && /pistons/i.test(text)) || (t==='WAS' && /wizards/i.test(text)) || (t==='POR' && /blazers|trail blazers/i.test(text)) || (t==='UTA' && /jazz/i.test(text)) || (t==='DAL' && /mavericks|mavs/i.test(text)) || (t==='HOU' && /rockets/i.test(text)) || (t==='BKN' && /nets/i.test(text)));
-      if (mentioned.length > 0) {
-        const roster = summaries.filter(p => mentioned.includes(p.team)).map(p => p.player_name + ' (' + p.team + ') ppg=' + p.ppg + ' rpg=' + p.rpg + ' apg=' + p.apg).join(', ');
-        ctxSummary += '\nCurrent rosters: ' + roster;
-      }
-    } catch(e) {}
-    const systemPrompt = `[System prompt redacted — contains operational instructions for the Jarvis orchestration agent including timezone logic, command routing, and NBA context awareness]` + ctxSummary;
-    const body = JSON.stringify({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 600,
-      system: systemPrompt,
-      messages: [{ role: 'user', content: text }]
-    });
-    const options = {
-      hostname: 'api.anthropic.com',
-      path: '/v1/messages',
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'anthropic-version': '2023-06-01', 'x-api-key': process.env.ANTHROPIC_API_KEY, 'Content-Length': Buffer.byteLength(body) }
-    };
-    const reply = await new Promise((resolve, reject) => {
-      const req = https.request(options, res => {
-        let d = ''; res.on('data', c => d += c);
-        res.on('end', () => { try { resolve(JSON.parse(d)); } catch(e) { reject(e); } });
+    // Route through Edge /analyze endpoint for data-driven analysis
+    const reqBody = JSON.stringify({ query: text, detail: 'brief' });
+    const analyzeResult = await new Promise((resolve, reject) => {
+      const req = http.request({
+        hostname: 'localhost',
+        port: 3747,
+        path: '/analyze',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': process.env.EDGE_API_KEY || 'edge-dev-key',
+          'Content-Length': Buffer.byteLength(reqBody),
+        },
+        timeout: 60000,
+      }, res => {
+        let d = '';
+        res.on('data', c => d += c);
+        res.on('end', () => {
+          try { resolve(JSON.parse(d)); }
+          catch (e) { reject(new Error('Failed to parse analyze response')); }
+        });
       });
-      req.on('error', reject); req.write(body); req.end();
+      req.on('error', reject);
+      req.on('timeout', () => { req.destroy(); reject(new Error('Analyze request timed out')); });
+      req.write(reqBody);
+      req.end();
     });
-    const msg = reply.content?.[0]?.text || 'Sorry, I could not generate a response.';
-    await sendMessage(msg);
+
+    if (analyzeResult.analysis) {
+      // Truncate for Telegram (4096 char limit)
+      let msg = analyzeResult.analysis;
+      if (msg.length > 4000) msg = msg.slice(0, 3997) + '...';
+      await sendMessage(msg);
+    } else if (analyzeResult.error) {
+      await sendMessage('⚠️ ' + analyzeResult.error);
+    } else {
+      await sendMessage('Sorry, I could not generate an analysis.');
+    }
   } catch (e) {
     console.error('[chat error]', e.message, e.stack);
     await sendMessage('Error: ' + e.message);
@@ -461,8 +458,9 @@ async function poll() {
         if (!msg || !msg.text) continue;
 
         // Only respond to your own chat
-        if (String(msg.chat.id) !== String(CHAT_ID)) // operator-only filter continue;
+        if (!ALLOWED_CHAT_IDS.has(String(msg.chat.id))) continue; // allowed users only
 
+        _activeChatId = msg.chat.id; // route responses to this chat
         const text = msg.text.trim();
         const cmd  = text.split(' ')[0].toLowerCase().replace(`@jarvisedge1bot`, '');
         const args = text.slice(cmd.length).trim();

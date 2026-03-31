@@ -96,9 +96,30 @@ export function AnalysisCard({ analysis, onCreatePoll }: AnalysisCardProps) {
         <h3 className="font-condensed font-bold text-[20px] text-[#111] leading-tight mb-2">
           {analysis.result.title}
         </h3>
-        <p className="font-sans text-[14px] text-[#444] leading-relaxed mb-4">
-          {analysis.result.body}
-        </p>
+        <div className="font-sans text-[14px] text-[#444] leading-relaxed mb-4 whitespace-pre-wrap">
+          {analysis.result.body.split('\n').map((line, i) => {
+            // Bold headers (lines starting with emoji or **)
+            if (line.match(/^[🏀📊🔍⚠️💡🎯]/)) {
+              return <p key={i} className="font-condensed font-bold text-[15px] text-[#111] mt-3 mb-1">{line.replace(/\*\*/g, '')}</p>;
+            }
+            if (line.startsWith('**') && line.endsWith('**')) {
+              return <p key={i} className="font-condensed font-bold text-[15px] text-[#111] mt-3 mb-1">{line.replace(/\*\*/g, '')}</p>;
+            }
+            // Bullet points
+            if (line.startsWith('- ')) {
+              return <p key={i} className="pl-3 mb-0.5">{line.replace(/\*\*/g, '').replace(/^- /, '• ')}</p>;
+            }
+            // Disclaimer
+            if (line.startsWith('_') && line.endsWith('_')) {
+              return <p key={i} className="text-[11px] text-[#AAA] mt-3 italic">{line.replace(/_/g, '')}</p>;
+            }
+            // Separator
+            if (line === '---') return <hr key={i} className="my-2 border-[#E0E0E0]" />;
+            // Regular text
+            if (line.trim()) return <p key={i} className="mb-1">{line.replace(/\*\*/g, '')}</p>;
+            return <br key={i} />;
+          })}
+        </div>
 
         {/* Signal bar */}
         <div className="flex items-center gap-3 p-3 bg-[#F5F5F5] border border-[#E0E0E0] rounded-sm mb-4">
@@ -172,29 +193,81 @@ export function AskBar({ onResult }: AskBarProps) {
 
   const QUICK_QUERIES = ["Brunson props tonight", "Will Denver cover -7.5?", "Best value bet on tonight's slate"];
 
-  const runAnalysis = (q: string) => {
-    const match = MOCK_ANALYSES.find(
-      (a) => a.query.toLowerCase() === q.toLowerCase()
-    ) || MOCK_ANALYSES[Math.floor(Math.random() * MOCK_ANALYSES.length)];
+  const runAnalysis = async (q: string) => {
+    const loadingAnalysis: Analysis = {
+      id: `live-${Date.now()}`,
+      query: q,
+      steps: [
+        "Parsing query...",
+        "Fetching market odds...",
+        "Running Edge pricing engine...",
+        "Analyzing player props...",
+        "Generating analysis via Claude...",
+      ],
+      result: { title: "", body: "", confidence: "MED", prob: 50, signal: "", pollProposition: q, verdictLabel: "" },
+    };
 
-    setActiveAnalysis(match);
+    setActiveAnalysis(loadingAnalysis);
     setIsLoading(true);
     setCurrentStep(0);
     setResult(null);
 
+    // Animate loading steps
     let step = 0;
-    const interval = setInterval(() => {
+    const stepInterval = setInterval(() => {
       step++;
       setCurrentStep(step);
-      if (step >= match.steps.length) {
-        clearInterval(interval);
-        setTimeout(() => {
-          setIsLoading(false);
-          setResult(match);
-          if (onResult) onResult(match);
-        }, 400);
-      }
-    }, 500);
+      if (step >= loadingAnalysis.steps.length) clearInterval(stepInterval);
+    }, 3000);
+
+    try {
+      const res = await fetch("/api/edge/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: q, detail: "brief" }),
+      });
+      const data = await res.json();
+
+      clearInterval(stepInterval);
+      setCurrentStep(loadingAnalysis.steps.length);
+
+      // Map Edge response to Analysis format
+      const analysis = data.analysis || "Analysis unavailable.";
+      const prices = data.prices || [];
+      const gameWin = prices.find((p: any) => p.type === "game_win");
+      const prob = gameWin ? Math.round(gameWin.probability * 100) : 50;
+      const conf: ConfTier = prob >= 65 ? "HIGH" : prob >= 50 ? "MED" : "COND";
+      const title = q;
+      const signal = gameWin ? `${gameWin.team} ${prob}%` : "Analysis";
+
+      const finalResult: Analysis = {
+        id: `edge-${Date.now()}`,
+        query: q,
+        steps: loadingAnalysis.steps,
+        result: {
+          title,
+          body: analysis,
+          confidence: conf,
+          prob,
+          signal,
+          pollProposition: q,
+          verdictLabel: signal,
+        },
+      };
+
+      setTimeout(() => {
+        setIsLoading(false);
+        setResult(finalResult);
+        if (onResult) onResult(finalResult);
+      }, 400);
+    } catch (e) {
+      clearInterval(stepInterval);
+      // Fall back to mock on error
+      const fallback = MOCK_ANALYSES[Math.floor(Math.random() * MOCK_ANALYSES.length)];
+      setIsLoading(false);
+      setResult(fallback);
+      if (onResult) onResult(fallback);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
