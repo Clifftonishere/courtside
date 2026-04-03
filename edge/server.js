@@ -17,6 +17,7 @@
  */
 
 const http = require('http');
+const https = require('https');
 const { calcProbability } = require('./calc');
 const { pricebet } = require('./odds-agent');
 const { buildContext, fetchInjuries } = require('./context');
@@ -262,6 +263,337 @@ async function handleGames(req, res) {
   json(res, 200, { date: data.scoreboard.gameDate, games });
 }
 
+// ── Markets Today — Courtside Integration ────────────────
+
+const ODDS_API_KEY = process.env.ODDS_API_KEY || '';
+const POLYMARKET_GAMMA_API = 'https://gamma-api.polymarket.com';
+
+// In-memory cache: { data, timestamp }
+let marketsCache = null;
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+function httpGet(url) {
+  return new Promise((resolve, reject) => {
+    const lib = url.startsWith('https') ? https : http;
+    lib.get(url, { headers: { 'User-Agent': 'EdgeProtocol/2.0' } }, (r) => {
+      let d = '';
+      r.on('data', c => d += c);
+      r.on('end', () => {
+        try { resolve(JSON.parse(d)); }
+        catch (e) { reject(new Error(`JSON parse failed for ${url}`)); }
+      });
+    }).on('error', reject);
+  });
+}
+
+// NBA team tricode mappings for matching
+const TEAM_NAMES = {
+  'Atlanta Hawks': 'ATL', 'Boston Celtics': 'BOS', 'Brooklyn Nets': 'BKN',
+  'Charlotte Hornets': 'CHA', 'Chicago Bulls': 'CHI', 'Cleveland Cavaliers': 'CLE',
+  'Dallas Mavericks': 'DAL', 'Denver Nuggets': 'DEN', 'Detroit Pistons': 'DET',
+  'Golden State Warriors': 'GSW', 'Houston Rockets': 'HOU', 'Indiana Pacers': 'IND',
+  'Los Angeles Clippers': 'LAC', 'Los Angeles Lakers': 'LAL', 'Memphis Grizzlies': 'MEM',
+  'Miami Heat': 'MIA', 'Milwaukee Bucks': 'MIL', 'Minnesota Timberwolves': 'MIN',
+  'New Orleans Pelicans': 'NOP', 'New York Knicks': 'NYK', 'Oklahoma City Thunder': 'OKC',
+  'Orlando Magic': 'ORL', 'Philadelphia 76ers': 'PHI', 'Phoenix Suns': 'PHX',
+  'Portland Trail Blazers': 'POR', 'Sacramento Kings': 'SAC', 'San Antonio Spurs': 'SAS',
+  'Toronto Raptors': 'TOR', 'Utah Jazz': 'UTA', 'Washington Wizards': 'WAS',
+};
+
+function teamNameToTricode(name) {
+  return TEAM_NAMES[name] || name.split(' ').pop().substring(0, 3).toUpperCase();
+}
+
+// Convert American moneyline odds to implied probability
+function mlToProb(ml) {
+  if (ml < 0) return Math.abs(ml) / (Math.abs(ml) + 100);
+  return 100 / (ml + 100);
+}
+
+// Convert decimal odds to implied probability
+function decimalToProb(dec) {
+  return 1 / dec;
+}
+
+// Consensus probability from multiple bookmakers (vig-removed)
+function consensusProb(bookmakers, teamName) {
+  const probs = [];
+  for (const bk of bookmakers) {
+    const h2h = bk.markets?.find(m => m.key === 'h2h');
+    if (!h2h) continue;
+    const outcome = h2h.outcomes?.find(o => o.name === teamName);
+    const opponent = h2h.outcomes?.find(o => o.name !== teamName);
+    if (!outcome || !opponent) continue;
+    const raw = decimalToProb(outcome.price);
+    const oppRaw = decimalToProb(opponent.price);
+    const total = raw + oppRaw;
+    probs.push(raw / total); // vig-removed
+  }
+  if (probs.length === 0) return null;
+  return probs.reduce((a, b) => a + b, 0) / probs.length;
+}
+
+// Polymarket slug tricodes (lowercase)
+const PM_TRICODES = {
+  'Atlanta Hawks': 'atl', 'Boston Celtics': 'bos', 'Brooklyn Nets': 'bkn',
+  'Charlotte Hornets': 'cha', 'Chicago Bulls': 'chi', 'Cleveland Cavaliers': 'cle',
+  'Dallas Mavericks': 'dal', 'Denver Nuggets': 'den', 'Detroit Pistons': 'det',
+  'Golden State Warriors': 'gsw', 'Houston Rockets': 'hou', 'Indiana Pacers': 'ind',
+  'Los Angeles Clippers': 'lac', 'Los Angeles Lakers': 'lal', 'Memphis Grizzlies': 'mem',
+  'Miami Heat': 'mia', 'Milwaukee Bucks': 'mil', 'Minnesota Timberwolves': 'min',
+  'New Orleans Pelicans': 'nop', 'New York Knicks': 'nyk', 'Oklahoma City Thunder': 'okc',
+  'Orlando Magic': 'orl', 'Philadelphia 76ers': 'phi', 'Phoenix Suns': 'phx',
+  'Portland Trail Blazers': 'por', 'Sacramento Kings': 'sac', 'San Antonio Spurs': 'sas',
+  'Toronto Raptors': 'tor', 'Utah Jazz': 'uta', 'Washington Wizards': 'was',
+};
+
+// Fetch Polymarket NBA game markets for a specific date
+// Slug pattern: nba-{away}-{home}-{YYYY-MM-DD} for game winner
+//               nba-{away}-{home}-{YYYY-MM-DD}-spread-... for spreads
+//               nba-{away}-{home}-{YYYY-MM-DD}-total-... for totals
+async function fetchPolymarketNBA(dateStr) {
+  try {
+    // Fetch high-volume active markets and filter by NBA game slug pattern
+    const data = await httpGet(
+      `${POLYMARKET_GAMMA_API}/markets?active=true&closed=false&limit=200&order=volume24hr&ascending=false`
+    );
+    if (!Array.isArray(data)) return [];
+    return data.filter(m => {
+      const slug = m.slug || '';
+      return slug.startsWith('nba-') && slug.includes(dateStr);
+    });
+  } catch (e) {
+    console.error('[Markets] Polymarket fetch failed:', e.message);
+    return [];
+  }
+}
+
+// Find Polymarket game-winner market for a matchup
+function findPmGameWinner(pmMarkets, awayTricode, homeTricode, dateStr) {
+  const awayLc = awayTricode.toLowerCase();
+  const homeLc = homeTricode.toLowerCase();
+  // Game winner slug: nba-{away}-{home}-{date} (no -spread- or -total-)
+  return pmMarkets.find(m => {
+    const slug = m.slug || '';
+    return slug === `nba-${awayLc}-${homeLc}-${dateStr}` ||
+           slug === `nba-${homeLc}-${awayLc}-${dateStr}`; // check both orderings
+  }) || null;
+}
+
+// Find Polymarket total market for a matchup
+function findPmTotal(pmMarkets, awayTricode, homeTricode, dateStr) {
+  const awayLc = awayTricode.toLowerCase();
+  const homeLc = homeTricode.toLowerCase();
+  return pmMarkets.filter(m => {
+    const slug = m.slug || '';
+    return (slug.startsWith(`nba-${awayLc}-${homeLc}-${dateStr}-total`) ||
+            slug.startsWith(`nba-${homeLc}-${awayLc}-${dateStr}-total`));
+  });
+}
+
+// Find Polymarket spread markets for a matchup
+function findPmSpread(pmMarkets, awayTricode, homeTricode, dateStr) {
+  const awayLc = awayTricode.toLowerCase();
+  const homeLc = homeTricode.toLowerCase();
+  return pmMarkets.filter(m => {
+    const slug = m.slug || '';
+    return (slug.startsWith(`nba-${awayLc}-${homeLc}-${dateStr}-spread`) ||
+            slug.startsWith(`nba-${homeLc}-${awayLc}-${dateStr}-spread`));
+  });
+}
+
+async function getMarketsToday() {
+  // Check cache
+  if (marketsCache && Date.now() - marketsCache.timestamp < CACHE_TTL) {
+    return marketsCache.data;
+  }
+
+  const today = new Date().toISOString().split('T')[0];
+  const markets = [];
+
+  // 1. Fetch Odds API events + odds
+  let oddsEvents = [];
+  if (ODDS_API_KEY) {
+    try {
+      oddsEvents = await httpGet(
+        `https://api.the-odds-api.com/v4/sports/basketball_nba/odds/?apiKey=${ODDS_API_KEY}&regions=us&markets=h2h,spreads,totals&oddsFormat=decimal&dateFormat=iso`
+      );
+      if (!Array.isArray(oddsEvents)) oddsEvents = [];
+      // Filter to today's games only
+      oddsEvents = oddsEvents.filter(ev => {
+        const gameDate = new Date(ev.commence_time).toISOString().split('T')[0];
+        return gameDate === today;
+      });
+    } catch (e) {
+      console.error('[Markets] Odds API failed:', e.message);
+    }
+  }
+
+  // 2. Fetch Polymarket NBA game markets for today
+  const pmMarkets = await fetchPolymarketNBA(today);
+  console.log(`[Markets] Found ${pmMarkets.length} Polymarket NBA markets for ${today}`);
+
+  // 3. Build markets from Odds API events + Polymarket prices
+  for (const ev of oddsEvents) {
+    const homeTricode = teamNameToTricode(ev.home_team);
+    const awayTricode = teamNameToTricode(ev.away_team);
+    const pmAway = PM_TRICODES[ev.away_team] || awayTricode.toLowerCase();
+    const pmHome = PM_TRICODES[ev.home_team] || homeTricode.toLowerCase();
+    const gameLabel = `${awayTricode} @ ${homeTricode}`;
+    const homeProb = consensusProb(ev.bookmakers || [], ev.home_team);
+
+    // ── Game Winner ──────────────────────────────────────
+    const pmGW = findPmGameWinner(pmMarkets, pmAway, pmHome, today);
+    // Polymarket game-winner: outcomes[0] = away YES price, outcomes[1] = away NO (= home YES)
+    // Slug is nba-{away}-{home}-{date}, question is "{Away} vs. {Home}"
+    // outcomePrices[0] = probability of first-listed team (away)
+    let pmHomePrice = null;
+    let pmUrl = '';
+    if (pmGW) {
+      const prices = JSON.parse(pmGW.outcomePrices || '[]');
+      const slug = pmGW.slug || '';
+      // If slug starts with nba-{away}-, then prices[0] = away, prices[1] = home
+      // If slug starts with nba-{home}-, then prices[0] = home
+      if (slug.startsWith(`nba-${pmAway}-`)) {
+        pmHomePrice = parseFloat(prices[1]) || null; // second outcome = home
+      } else {
+        pmHomePrice = parseFloat(prices[0]) || null; // first outcome = home
+      }
+      pmUrl = `https://polymarket.com/event/${slug}`;
+    }
+
+    if (homeProb !== null) {
+      const marketPrice = pmHomePrice || homeProb; // use edge prob as market price when no PM
+      const edgeValue = homeProb - marketPrice;
+      const confidence = homeProb >= 0.65 ? 'HIGH' : homeProb >= 0.50 ? 'MED' : 'COND';
+      let recommendation;
+      if (confidence === 'COND') recommendation = 'HOLD';
+      else if (edgeValue > 0.05) recommendation = 'BUY_YES';
+      else if (edgeValue < -0.05) recommendation = 'BUY_NO';
+      else recommendation = 'NO_EDGE';
+
+      const reasoning = [];
+      if (homeProb >= 0.65) reasoning.push(`${ev.home_team} are strong favorites at ${Math.round(homeProb * 100)}% consensus`);
+      if (edgeValue > 0.03) reasoning.push(`Market underpricing by ${Math.round(edgeValue * 100)}pp`);
+      if (edgeValue < -0.03) reasoning.push(`Market overpricing by ${Math.round(Math.abs(edgeValue) * 100)}pp`);
+      if (pmGW) reasoning.push(`Polymarket: ${pmUrl}`);
+      else reasoning.push('No Polymarket game-winner market found');
+
+      markets.push({
+        id: `mkt-${ev.id || `${homeTricode}${awayTricode}${today}`}`,
+        platform: pmGW ? 'polymarket' : 'sportsbook',
+        url: pmUrl,
+        title: `${ev.home_team} to beat ${ev.away_team}`,
+        category: 'game_winner',
+        edge_probability: Math.round(homeProb * 100) / 100,
+        market_price: Math.round(marketPrice * 100) / 100,
+        edge_value: Math.round(edgeValue * 100) / 100,
+        recommendation,
+        confidence,
+        reasoning,
+        game: gameLabel,
+        expires_at: ev.commence_time,
+      });
+    }
+
+    // ── Totals ───────────────────────────────────────────
+    const totalsBookmaker = (ev.bookmakers || []).find(bk => bk.markets?.some(m => m.key === 'totals'));
+    const pmTotals = findPmTotal(pmMarkets, pmAway, pmHome, today);
+    if (totalsBookmaker) {
+      const totalsMarket = totalsBookmaker.markets.find(m => m.key === 'totals');
+      const overOutcome = totalsMarket?.outcomes?.find(o => o.name === 'Over');
+      if (overOutcome) {
+        const totalLine = overOutcome.point;
+        const overProb = decimalToProb(overOutcome.price);
+        // Find matching PM total by line
+        const pmTotal = pmTotals.find(m => (m.slug || '').includes(String(totalLine).replace('.', 'pt')));
+        let pmTotalPrice = null;
+        let pmTotalUrl = '';
+        if (pmTotal) {
+          const prices = JSON.parse(pmTotal.outcomePrices || '[]');
+          pmTotalPrice = parseFloat(prices[0]) || null; // Over is first outcome
+          pmTotalUrl = `https://polymarket.com/event/${pmTotal.slug}`;
+        }
+        const mktPrice = pmTotalPrice || overProb;
+        const totalEdge = overProb - mktPrice;
+
+        markets.push({
+          id: `mkt-total-${ev.id || `${homeTricode}${awayTricode}${today}`}`,
+          platform: pmTotal ? 'polymarket' : 'sportsbook',
+          url: pmTotalUrl,
+          title: `${gameLabel} Over ${totalLine}`,
+          category: 'total',
+          edge_probability: Math.round(overProb * 100) / 100,
+          market_price: Math.round(mktPrice * 100) / 100,
+          edge_value: Math.round(totalEdge * 100) / 100,
+          recommendation: Math.abs(totalEdge) > 0.05 ? (totalEdge > 0 ? 'BUY_YES' : 'BUY_NO') : 'NO_EDGE',
+          confidence: overProb >= 0.55 ? 'MED' : 'COND',
+          reasoning: [`Total line: ${totalLine}`, `Over implied at ${Math.round(overProb * 100)}%`, pmTotal ? `PM: ${pmTotalUrl}` : 'Sportsbook only'].filter(Boolean),
+          game: gameLabel,
+          expires_at: ev.commence_time,
+        });
+      }
+    }
+
+    // ── Spreads ──────────────────────────────────────────
+    const spreadsBookmaker = (ev.bookmakers || []).find(bk => bk.markets?.some(m => m.key === 'spreads'));
+    const pmSpreads = findPmSpread(pmMarkets, pmAway, pmHome, today);
+    if (spreadsBookmaker) {
+      const spreadsMarket = spreadsBookmaker.markets.find(m => m.key === 'spreads');
+      const homeSpread = spreadsMarket?.outcomes?.find(o => o.name === ev.home_team);
+      if (homeSpread && homeSpread.point) {
+        const spreadProb = decimalToProb(homeSpread.price);
+        // Find matching PM spread
+        const spreadStr = String(Math.abs(homeSpread.point)).replace('.', 'pt');
+        const pmSpread = pmSpreads.find(m => (m.slug || '').includes(spreadStr));
+        let pmSpreadPrice = null;
+        let pmSpreadUrl = '';
+        if (pmSpread) {
+          const prices = JSON.parse(pmSpread.outcomePrices || '[]');
+          pmSpreadPrice = parseFloat(prices[0]) || null;
+          pmSpreadUrl = `https://polymarket.com/event/${pmSpread.slug}`;
+        }
+        const mktPrice = pmSpreadPrice || spreadProb;
+        const spreadEdge = spreadProb - mktPrice;
+
+        markets.push({
+          id: `mkt-spread-${ev.id || `${homeTricode}${awayTricode}${today}`}`,
+          platform: pmSpread ? 'polymarket' : 'sportsbook',
+          url: pmSpreadUrl,
+          title: `${ev.home_team} ${homeSpread.point > 0 ? '+' : ''}${homeSpread.point}`,
+          category: 'special',
+          edge_probability: Math.round(spreadProb * 100) / 100,
+          market_price: Math.round(mktPrice * 100) / 100,
+          edge_value: Math.round(spreadEdge * 100) / 100,
+          recommendation: Math.abs(spreadEdge) > 0.05 ? (spreadEdge > 0 ? 'BUY_YES' : 'BUY_NO') : 'NO_EDGE',
+          confidence: 'MED',
+          reasoning: [`${ev.home_team} spread: ${homeSpread.point > 0 ? '+' : ''}${homeSpread.point}`, pmSpread ? `PM: ${pmSpreadUrl}` : 'Sportsbook only'],
+          game: gameLabel,
+          expires_at: ev.commence_time,
+        });
+      }
+    }
+  }
+
+  // Sort: highest absolute edge first
+  markets.sort((a, b) => Math.abs(b.edge_value) - Math.abs(a.edge_value));
+
+  const result = { markets, date: today, source: 'edge' };
+  marketsCache = { data: result, timestamp: Date.now() };
+  return result;
+}
+
+// GET /markets/today
+async function handleMarketsToday(req, res) {
+  try {
+    const data = await getMarketsToday();
+    json(res, 200, data);
+  } catch (e) {
+    console.error('[Markets] Error:', e.message);
+    json(res, 500, { error: e.message, markets: [], date: new Date().toISOString().split('T')[0], source: 'edge' });
+  }
+}
+
 // ── Main router ──────────────────────────────────────────
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://localhost:${PORT}`);
@@ -297,8 +629,9 @@ const server = http.createServer(async (req, res) => {
     if (pathname.startsWith('/defense/') && req.method === 'GET') return handleDefense(req, res, pathname.split('/defense/')[1]);
     if (pathname === '/injuries' && req.method === 'GET') return await handleInjuries(req, res);
     if (pathname === '/games/today' && req.method === 'GET') return await handleGames(req, res);
+    if (pathname === '/markets/today' && req.method === 'GET') return await handleMarketsToday(req, res);
 
-    json(res, 404, { 
+    json(res, 404, {
       error: 'Not found',
       endpoints: {
         'POST  /price': 'Price a bet',
@@ -308,6 +641,7 @@ const server = http.createServer(async (req, res) => {
         'GET   /defense/:team': 'Team defensive ratings',
         'GET   /injuries': 'Live injury report',
         'GET   /games/today': "Today's NBA schedule",
+        'GET   /markets/today': "Today's markets with Edge intelligence",
         'GET   /health': 'Health check',
       }
     });
@@ -327,5 +661,6 @@ server.listen(PORT, () => {
   console.log(`   GET   http://localhost:${PORT}/defense/BOS`);
   console.log(`   GET   http://localhost:${PORT}/injuries`);
   console.log(`   GET   http://localhost:${PORT}/games/today`);
+  console.log(`   GET   http://localhost:${PORT}/markets/today`);
   console.log(`   GET   http://localhost:${PORT}/health\n`);
 });

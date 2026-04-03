@@ -1,8 +1,10 @@
 import { useState } from "react";
-import { ACTIVE_POLLS, RESOLVED_POLLS, LEADERBOARD } from "@/lib/mock-data";
+import { RESOLVED_POLLS, LEADERBOARD } from "@/lib/mock-data";
 import { PollCard } from "@/components/PollCard";
+import { MarketCard } from "@/components/MarketCard";
 import { SectionHeader } from "@/components/SectionHeader";
-import { Trophy, User, TrendingUp } from "lucide-react";
+import { useEdgeMarkets } from "@/hooks/use-edge-markets";
+import { Trophy, User, TrendingUp, Wifi, WifiOff } from "lucide-react";
 
 type Tab = "active" | "resolved" | "my";
 
@@ -121,9 +123,10 @@ function LeaderboardSidebar() {
 
 export function Polls() {
   const [activeTab, setActiveTab] = useState<Tab>("active");
+  const { markets, isLive, loading } = useEdgeMarkets();
 
   const tabs: { key: Tab; label: string; count: number }[] = [
-    { key: "active", label: "Live Calls", count: ACTIVE_POLLS.length },
+    { key: "active", label: "Edge Markets", count: markets.length },
     { key: "resolved", label: "Resolved", count: RESOLVED_POLLS.length },
     { key: "my", label: "My Calls", count: MY_CALLS.length },
   ];
@@ -132,8 +135,17 @@ export function Polls() {
     <div className="min-h-screen bg-white">
       <div className="border-b border-[#E0E0E0] bg-[#F5F5F5]">
         <div className="max-w-[1280px] mx-auto px-4 py-5">
-          <SectionHeader title="Courtside Calls" accentColor="#1D428A" />
-          <p className="font-sans text-[12px] text-[#888] mt-1">Vote with the model or fade it. Earn points when you're right.</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <SectionHeader title="Courtside Markets" accentColor="#1D428A" />
+              <p className="font-sans text-[12px] text-[#888] mt-1">
+                Edge intelligence — sportsbook consensus vs prediction market prices.
+              </p>
+            </div>
+            <span className={`flex items-center gap-1.5 font-mono text-[11px] ${isLive ? "text-[#008248]" : "text-[#888]"}`}>
+              {isLive ? <><Wifi size={11} /> LIVE</> : <><WifiOff size={11} /> {loading ? "LOADING..." : "OFFLINE"}</>}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -161,9 +173,20 @@ export function Polls() {
         <div className="flex flex-col lg:flex-row gap-6">
           <div className="flex-1">
             {activeTab === "active" && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {ACTIVE_POLLS.map((poll) => <PollCard key={poll.id} poll={poll} />)}
-              </div>
+              markets.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {markets.map((market) => <MarketCard key={market.id} market={market} />)}
+                </div>
+              ) : (
+                <div className="bg-[#F5F5F5] border border-[#E0E0E0] rounded-lg p-8 text-center">
+                  <p className="font-sans text-[14px] text-[#888]">
+                    {loading ? "Loading markets..." : "No markets available yet"}
+                  </p>
+                  <p className="font-mono text-[11px] text-[#AAA] mt-2">
+                    Markets appear when today's games have odds posted
+                  </p>
+                </div>
+              )
             )}
             {activeTab === "resolved" && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

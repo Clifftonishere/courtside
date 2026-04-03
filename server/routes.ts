@@ -114,6 +114,19 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // ── Edge VPS — Markets Today (Courtside integration) ─────────────────
+  app.get("/api/edge/markets", async (req, res) => {
+    try {
+      const data = await fetchJSON(
+        "http://5.223.72.173:3747/markets/today",
+        { headers: { "x-api-key": "edge-dev-key" } }
+      );
+      res.json(data);
+    } catch (e: any) {
+      res.json({ markets: [], date: new Date().toISOString().split("T")[0], source: "edge", error: "Edge VPS unreachable" });
+    }
+  });
+
   // ── Edge VPS — Price a specific bet ───────────────────────────────────
   app.post("/api/edge/price", async (req, res) => {
     try {
