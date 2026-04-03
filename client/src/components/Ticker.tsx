@@ -1,27 +1,38 @@
-import { TICKER_ITEMS, GAMES } from "@/lib/mock-data";
+import { GAMES } from "@/lib/mock-data";
+import { useNBAGames } from "@/hooks/use-nba-games";
 
-type TickerItem = typeof TICKER_ITEMS[0];
+interface TickerItem {
+  id: string;
+  away: string;
+  home: string;
+  awayScore: number | null;
+  homeScore: number | null;
+  status: string;
+  isLive: boolean;
+  isFinal: boolean;
+}
 
 interface TickerProps {
   onGameSelect?: (gameId: string) => void;
 }
 
 function TickerGame({ item, onGameSelect }: { item: TickerItem; onGameSelect?: (id: string) => void }) {
-  // Find matching game by team abbrs
-  const matchingGame = GAMES.find(g =>
+  // Try matching by ID first (live data), fall back to mock GAMES by team abbrs
+  const matchingMock = GAMES.find(g =>
     (g.away.abbr === item.away && g.home.abbr === item.home) ||
     (g.away.abbr === item.home && g.home.abbr === item.away)
   );
+  const gameId = item.id || matchingMock?.id;
 
   const handleClick = () => {
-    if (matchingGame && onGameSelect) {
-      onGameSelect(matchingGame.id);
+    if (gameId && onGameSelect) {
+      onGameSelect(gameId);
     }
   };
 
   return (
     <span
-      className={`flex items-center gap-2 px-5 shrink-0 whitespace-nowrap border-r border-[#2a2a2a] ${matchingGame ? 'cursor-pointer hover:bg-white/5 transition-colors' : ''}`}
+      className={`flex items-center gap-2 px-5 shrink-0 whitespace-nowrap border-r border-[#2a2a2a] ${gameId ? 'cursor-pointer hover:bg-white/5 transition-colors' : ''}`}
       onClick={handleClick}
     >
       {item.isLive && (
@@ -55,7 +66,20 @@ function TickerGame({ item, onGameSelect }: { item: TickerItem; onGameSelect?: (
 }
 
 export function Ticker({ onGameSelect }: TickerProps) {
-  const doubled = [...TICKER_ITEMS, ...TICKER_ITEMS];
+  const { games } = useNBAGames();
+
+  const tickerItems: TickerItem[] = games.map(g => ({
+    id: g.id,
+    away: g.away.abbr,
+    home: g.home.abbr,
+    awayScore: g.awayScore,
+    homeScore: g.homeScore,
+    status: g.isLive ? `Q${g.quarter} ${g.timeRemaining}` : g.isFinal ? "FINAL" : g.tipoff,
+    isLive: g.isLive,
+    isFinal: g.isFinal,
+  }));
+
+  const doubled = [...tickerItems, ...tickerItems];
   return (
     <div className="fixed left-0 right-0 z-40 bg-[#1a1a1a] border-b border-[#2a2a2a] overflow-hidden" style={{ top: 48, height: 32 }}>
       <div className="flex items-center h-full ticker-track">

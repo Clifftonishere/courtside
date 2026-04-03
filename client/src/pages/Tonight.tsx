@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { TRENDING_INSIGHTS } from "@/lib/mock-data";
 import { AskBar } from "@/components/AnalysisCard";
 import { GameCard } from "@/components/GameCard";
@@ -9,7 +10,7 @@ import { SectionHeader } from "@/components/SectionHeader";
 import { useNBAGames } from "@/hooks/use-nba-games.ts";
 import { GAMES as MOCK_GAMES } from "@/lib/mock-data";
 import { useEdgeMarkets } from "@/hooks/use-edge-markets";
-import { RefreshCw, Wifi, WifiOff, ChevronRight } from "lucide-react";
+import { RefreshCw, Wifi, WifiOff, ChevronLeft, ChevronRight } from "lucide-react";
 
 const CONF_COLORS: Record<string, string> = {
   HIGH: "#008248", MED: "#F5A623", COND: "#888",
@@ -20,13 +21,24 @@ interface TonightProps {
 }
 
 export function Tonight({ onGameSelect }: TonightProps) {
-  const { games: liveGames, loading, error, lastUpdated, hasLiveGames, refetch } = useNBAGames();
+  const todayStr = new Date().toISOString().split('T')[0];
+  const [selectedDate, setSelectedDate] = useState(todayStr);
+  const isToday = selectedDate === todayStr;
+
+  const { games: liveGames, loading, error, lastUpdated, hasLiveGames, refetch } = useNBAGames(selectedDate);
   const { markets, isLive: edgeIsLive } = useEdgeMarkets();
 
   const games = liveGames.length > 0 ? liveGames : MOCK_GAMES;
   const isLiveData = liveGames.length > 0;
   const topMarkets = markets.slice(0, 4);
-  const today = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+  const headerDate = new Date(selectedDate + 'T12:00:00').toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+
+  function shiftDate(days: number) {
+    const d = new Date(selectedDate + 'T12:00:00'); // noon to avoid TZ issues
+    d.setDate(d.getDate() + days);
+    setSelectedDate(d.toISOString().split('T')[0]);
+  }
+  const displayDate = new Date(selectedDate + 'T12:00:00').toLocaleDateString("en-US", { weekday: 'short', month: "short", day: "numeric" });
 
   // Build trending signals from Edge markets
   const signals = markets.length > 0
@@ -66,7 +78,7 @@ export function Tonight({ onGameSelect }: TonightProps) {
                 Tonight's Intelligence
               </h1>
               <p className="font-sans text-[13px] text-[#888] mt-1">
-                AI-powered game analysis for {today} · {games.length} games on the slate
+                AI-powered game analysis for {headerDate} · {games.length} games on the slate
               </p>
             </div>
             <div className="flex items-center gap-2 mt-1">
@@ -121,7 +133,27 @@ export function Tonight({ onGameSelect }: TonightProps) {
 
             {/* Left: Games */}
             <div className="w-full md:w-[55%]">
-              <SectionHeader title="Tonight's Games" />
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-3">
+                  <button onClick={() => shiftDate(-1)} className="p-1.5 rounded-sm hover:bg-[#F0F0F0] text-[#888] hover:text-[#111] transition-colors">
+                    <ChevronLeft size={16} />
+                  </button>
+                  <div className="text-center min-w-[140px]">
+                    <span className="font-condensed font-bold text-[14px] uppercase text-[#111] tracking-[0.5px]">
+                      {isToday ? "Tonight's Games" : displayDate}
+                    </span>
+                  </div>
+                  <button onClick={() => shiftDate(1)} className="p-1.5 rounded-sm hover:bg-[#F0F0F0] text-[#888] hover:text-[#111] transition-colors">
+                    <ChevronRight size={16} />
+                  </button>
+                  {!isToday && (
+                    <button onClick={() => setSelectedDate(todayStr)}
+                      className="font-condensed font-bold text-[10px] uppercase tracking-[0.5px] px-2 py-1 bg-[#1D428A] text-white rounded-sm hover:bg-[#152d5e] transition-colors">
+                      TODAY
+                    </button>
+                  )}
+                </div>
+              </div>
               {loading && games.length === 0 ? (
                 <div className="space-y-3">
                   {[1,2,3].map(i => <div key={i} className="h-[120px] bg-[#F5F5F5] rounded-lg animate-pulse" />)}

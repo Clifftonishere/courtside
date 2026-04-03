@@ -45,11 +45,26 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   // ── NBA CDN Live Scoreboard ────────────────────────────────────────────
   app.get("/api/nba/scoreboard", async (req, res) => {
+    const dateParam = req.query.date as string | undefined;
+    const today = new Date().toISOString().split("T")[0];
+    const targetDate = dateParam || today;
+    const isToday = targetDate === today;
+
     try {
-      const data = await fetchJSON("https://cdn.nba.com/static/json/liveData/scoreboard/todaysScoreboard_00.json");
-      res.json(data);
+      if (isToday) {
+        // Use live CDN for today (has real-time scores)
+        const data = await fetchJSON("https://cdn.nba.com/static/json/liveData/scoreboard/todaysScoreboard_00.json");
+        res.json(data);
+      } else {
+        // Use stats.nba.com scoreboardv3 for other dates
+        const data = await fetchJSON(
+          `https://stats.nba.com/stats/scoreboardv3?GameDate=${targetDate}&LeagueID=00`,
+          { headers: { "Referer": "https://www.nba.com/", "User-Agent": "Mozilla/5.0" } }
+        );
+        res.json(data);
+      }
     } catch (e: any) {
-      res.status(503).json({ error: "NBA CDN unavailable", detail: e.message });
+      res.status(503).json({ error: "NBA scoreboard unavailable", detail: e.message });
     }
   });
 
@@ -72,10 +87,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // ── balldontlie — Tonight's Games ─────────────────────────────────────
   app.get("/api/nba/games/tonight", async (req, res) => {
     const apiKey = process.env.BALLDONTLIE_API_KEY || "";
+    const dateParam = req.query.date as string | undefined;
     const today = new Date().toISOString().split("T")[0];
+    const targetDate = dateParam || today;
     try {
       const data = await fetchJSON(
-        `https://api.balldontlie.io/v1/games?dates[]=${today}&per_page=30`,
+        `https://api.balldontlie.io/v1/games?dates[]=${targetDate}&per_page=30`,
         { headers: { Authorization: apiKey } }
       );
       res.json(data);

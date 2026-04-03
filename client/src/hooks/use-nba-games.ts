@@ -261,15 +261,102 @@ async function fetchNBACDNScoreboard(): Promise<LiveGame[]> {
   });
 }
 
-export function useNBAGames() {
+async function fetchServerScoreboard(date: string): Promise<LiveGame[]> {
+  const res = await fetch(`/api/nba/scoreboard?date=${date}`);
+  if (!res.ok) throw new Error("Server scoreboard fetch failed");
+  const data = await res.json();
+  const games = data.scoreboard?.games ?? data.games ?? [];
+
+  return games.map((g: any, idx: number) => {
+    const awayAbbr = mapTricode(g.awayTeam?.teamTricode || "");
+    const homeAbbr = mapTricode(g.homeTeam?.teamTricode || "");
+    const awayScore = g.awayTeam?.score ?? null;
+    const homeScore = g.homeTeam?.score ?? null;
+
+    const gameStatus = g.gameStatus; // 1=upcoming, 2=live, 3=final
+    const isLive = gameStatus === 2;
+    const isFinal = gameStatus === 3;
+
+    const { quarter, timeRemaining } = parsePeriodText(g);
+
+    const homeWins = parseInt(g.homeTeam?.wins || "40");
+    const awayWins = parseInt(g.awayTeam?.wins || "35");
+    const homeAdvantage = 3.5;
+    const marginDiff = (homeWins - awayWins) * 0.15 + homeAdvantage;
+    const homeProb = sigmoid(marginDiff);
+    const pickIsHome = homeProb >= 50;
+    const pick = pickIsHome ? homeAbbr : awayAbbr;
+    const pickProb = pickIsHome ? homeProb : 100 - homeProb;
+
+    const tipoffTime = g.gameStatusText || "";
+    const statusText = isFinal ? "final" : isLive ? "live" : "upcoming";
+
+    return {
+      id: g.gameId || `game-${idx}`,
+      away: {
+        abbr: awayAbbr,
+        name: TEAM_NAMES[awayAbbr] || g.awayTeam?.teamName || awayAbbr,
+        record: `${g.awayTeam?.wins || 0}-${g.awayTeam?.losses || 0}`,
+        teamId: NBA_TEAM_IDS[awayAbbr] || 0,
+        spread: `+${marginDiff.toFixed(1)}`,
+        ml: "+150",
+      },
+      home: {
+        abbr: homeAbbr,
+        name: TEAM_NAMES[homeAbbr] || g.homeTeam?.teamName || homeAbbr,
+        record: `${g.homeTeam?.wins || 0}-${g.homeTeam?.losses || 0}`,
+        teamId: NBA_TEAM_IDS[homeAbbr] || 0,
+        spread: `${(-marginDiff).toFixed(1)}`,
+        ml: "-170",
+      },
+      tipoff: isLive
+        ? `LIVE · Q${quarter} ${timeRemaining}`
+        : isFinal
+          ? "FINAL"
+          : tipoffTime,
+      network: g.broadcasters?.nationalBroadcasters?.[0]?.shortName || "NBA TV",
+      status: statusText,
+      isLive,
+      isFinal,
+      awayScore: awayScore !== null ? Number(awayScore) : null,
+      homeScore: homeScore !== null ? Number(homeScore) : null,
+      quarter,
+      timeRemaining,
+      totalLine: "o/u 225.5",
+      confidence: getConfidence(homeProb, pickIsHome),
+      pick,
+      pickReason: `${pick} ${pickIsHome ? "home court" : "road form"} advantage`,
+      pickProb,
+      winProbData: generateWinProbCurve(homeProb, homeAbbr, awayAbbr),
+      keyStats: [
+        {
+          label: `${homeAbbr} Home Record`,
+          value: `${g.homeTeam?.wins || 0}-${g.homeTeam?.losses || 0}`,
+        },
+        {
+          label: `${awayAbbr} Away Record`,
+          value: `${g.awayTeam?.wins || 0}-${g.awayTeam?.losses || 0}`,
+        },
+        { label: "Model Pick", value: `${pick} (${pickProb}%)` },
+        { label: "Game Total", value: "225.5" },
+      ],
+    };
+  });
+}
+
+export function useNBAGames(date?: string) {
   const [games, setGames] = useState<LiveGame[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
+  const isToday = !date || date === new Date().toISOString().split('T')[0];
+
   const fetchGames = useCallback(async () => {
     try {
-      const liveGames = await fetchNBACDNScoreboard();
+      const liveGames = isToday
+        ? await fetchNBACDNScoreboard()
+        : await fetchServerScoreboard(date!);
       setGames(liveGames);
       setError(null);
       setLastUpdated(new Date());
@@ -279,14 +366,17 @@ export function useNBAGames() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [date, isToday]);
 
   useEffect(() => {
+    setLoading(true);
     fetchGames();
-    // Refresh every 30 seconds
-    const interval = setInterval(fetchGames, 30000);
-    return () => clearInterval(interval);
-  }, [fetchGames]);
+    // Refresh every 30 seconds for today, no refresh for other dates
+    if (isToday) {
+      const interval = setInterval(fetchGames, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [fetchGames, date]);
 
   const hasLiveGames = games.some((g) => g.isLive);
 
