@@ -14,7 +14,7 @@ type Analysis = {
     confidence: ConfTier;
     prob: number;
     signal: string;
-    pollProposition: string;
+    marketProposition: string;
     verdictLabel: string;
   };
 };
@@ -67,15 +67,15 @@ function LoadingStep({ step, index, currentStep }: { step: string; index: number
 
 interface AnalysisCardProps {
   analysis: Analysis;
-  onCreatePoll?: (proposition: string) => void;
+  onCreateMarket?: (proposition: string) => void;
 }
 
-export function AnalysisCard({ analysis, onCreatePoll }: AnalysisCardProps) {
-  const [showPollCreated, setShowPollCreated] = useState(false);
+export function AnalysisCard({ analysis, onCreateMarket }: AnalysisCardProps) {
+  const [showMarketCreated, setShowMarketCreated] = useState(false);
 
-  const handleCreatePoll = () => {
-    setShowPollCreated(true);
-    if (onCreatePoll) onCreatePoll(analysis.result.pollProposition);
+  const handleCreateMarket = () => {
+    setShowMarketCreated(true);
+    if (onCreateMarket) onCreateMarket(analysis.result.marketProposition);
   };
 
   return (
@@ -149,28 +149,28 @@ export function AnalysisCard({ analysis, onCreatePoll }: AnalysisCardProps) {
             </span>
           </div>
           <p className="font-sans text-[13px] text-[#444] mb-1">
-            "{analysis.result.pollProposition}"
+            "{analysis.result.marketProposition}"
           </p>
           <p className="font-mono text-[11px] mb-3" style={{ color: CONF_LABEL_COLOR[analysis.result.confidence] }}>
             Your analysis: {analysis.result.verdictLabel} · {analysis.result.prob}%
           </p>
 
-          {showPollCreated ? (
+          {showMarketCreated ? (
             <div className="flex items-center gap-2 text-[#008248]">
               <CheckCircle size={14} />
-              <span className="font-condensed font-semibold text-[12px] uppercase">Poll created! Others can now vote.</span>
+              <span className="font-condensed font-semibold text-[12px] uppercase">Market created! Others can now vote.</span>
             </div>
           ) : (
             <>
               <button
-                onClick={handleCreatePoll}
-                data-testid="btn-create-poll"
+                onClick={handleCreateMarket}
+                data-testid="btn-create-market"
                 className="font-condensed font-bold text-[12px] uppercase tracking-[0.5px] bg-[#1D428A] text-white px-4 py-2 rounded-sm hover:bg-[#163570] transition-colors"
               >
                 Make this a Courtside Call
               </button>
               <p className="font-sans text-[11px] text-[#AAA] mt-2">
-                This becomes a poll that other fans can vote on. Earn reputation points when you're right.
+                This becomes a market that other fans can vote on. Earn reputation points when you're right.
               </p>
             </>
           )}
@@ -204,7 +204,7 @@ export function AskBar({ onResult }: AskBarProps) {
         "Analyzing player props...",
         "Generating analysis via Claude...",
       ],
-      result: { title: "", body: "", confidence: "MED", prob: 50, signal: "", pollProposition: q, verdictLabel: "" },
+      result: { title: "", body: "", confidence: "MED", prob: 50, signal: "", marketProposition: q, verdictLabel: "" },
     };
 
     setActiveAnalysis(loadingAnalysis);
@@ -250,7 +250,7 @@ export function AskBar({ onResult }: AskBarProps) {
           confidence: conf,
           prob,
           signal,
-          pollProposition: q,
+          marketProposition: q,
           verdictLabel: signal,
         },
       };

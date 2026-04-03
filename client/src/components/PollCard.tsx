@@ -25,7 +25,7 @@ const CONF_COLORS: Record<ConfTier, string> = {
 };
 
 // Player name → ID for headshots
-const POLL_PLAYER_IDS: Record<string, number> = {
+const MARKET_PLAYER_IDS: Record<string, number> = {
   "Brunson": 1628973, "Jokic": 203999, "Edwards": 1630162,
   "Giannis": 203507, "Luka": 1629029, "SGA": 1628983,
   "Tatum": 1628369, "Mitchell": 1628378, "Butler": 202710,
@@ -46,7 +46,7 @@ const NBA_TEAM_IDS: Record<string, number> = {
 
 function PollVisual({ proposition, game }: { proposition: string; game: string }) {
   // Check for player name match
-  for (const [name, id] of Object.entries(POLL_PLAYER_IDS)) {
+  for (const [name, id] of Object.entries(MARKET_PLAYER_IDS)) {
     if (proposition.includes(name)) {
       return <PlayerHeadshot playerId={id} playerName={name} size={36} />;
     }
@@ -88,7 +88,7 @@ export function PollCard({ poll, compact = false }: PollCardProps) {
   };
 
   return (
-    <div className="bg-white border border-[#E0E0E0] rounded-lg overflow-hidden" data-testid={`card-poll-${poll.id}`}>
+    <div className="bg-white border border-[#E0E0E0] rounded-lg overflow-hidden" data-testid={`card-market-${poll.id}`}>
       <div className={compact ? "p-3" : "p-4"}>
         {/* Game tag + visual + conf — all in one clean row */}
         <div className="flex items-center justify-between mb-2">

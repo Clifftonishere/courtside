@@ -34,8 +34,8 @@ const GAME_LEADERS: Record<string, { away: { name: string; pts: number; reb: num
   g6: { away: { name: "J. Butler", pts: 24, reb: 7, ast: 5 }, home: { name: "I. Quickley", pts: 22, reb: 3, ast: 8 } },
 };
 
-// Mock top poll per game
-const GAME_TOP_POLL: Record<string, { proposition: string; prob: number; conf: ConfTier; agreeVotes: number; fadeVotes: number }> = {
+// Mock top market per game
+const GAME_TOP_MARKET: Record<string, { proposition: string; prob: number; conf: ConfTier; agreeVotes: number; fadeVotes: number }> = {
   g1: { proposition: "Brunson over 30 pts", prob: 42, conf: "MED", agreeVotes: 234, fadeVotes: 189 },
   g2: { proposition: "Jokic triple-double", prob: 61, conf: "HIGH", agreeVotes: 567, fadeVotes: 312 },
   g3: { proposition: "Edwards scores 28+", prob: 63, conf: "HIGH", agreeVotes: 445, fadeVotes: 198 },
@@ -58,7 +58,7 @@ export function GameCard({ game }: GameCardProps) {
   }));
   const homeWinProb = chartData[chartData.length - 1]?.home ?? 50;
   const leaders = GAME_LEADERS[game.id];
-  const topPoll = GAME_TOP_POLL[game.id];
+  const topPoll = GAME_TOP_MARKET[game.id];
   const awayId = game.away.teamId || 0;
   const homeId = game.home.teamId || 0;
 
@@ -171,10 +171,10 @@ export function GameCard({ game }: GameCardProps) {
           </div>
         </div>
 
-        {/* Top poll preview */}
+        {/* Top market preview */}
         {topPoll && (
           <div className="mt-2.5 pt-2.5 border-t border-[#F0F0F0]">
-            <div className="font-condensed font-bold text-[9px] uppercase text-[#AAA] tracking-[0.5px] mb-1.5">Top Poll</div>
+            <div className="font-condensed font-bold text-[9px] uppercase text-[#AAA] tracking-[0.5px] mb-1.5">Top Market</div>
             <div className="flex items-center justify-between gap-3">
               <span className="font-sans text-[11px] text-[#444] flex-1 truncate">{topPoll.proposition}</span>
               <span className="font-mono font-semibold text-[11px] flex-shrink-0" style={{ color: topPoll.prob >= 55 ? "#008248" : "#888" }}>{topPoll.prob}%</span>

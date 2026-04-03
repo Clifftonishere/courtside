@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { ARENA_ARTICLES } from "@/lib/mock-data";
 import { SectionHeader } from "@/components/SectionHeader";
-import { BookOpen, Clock } from "lucide-react";
+import { BookOpen, Clock, Zap } from "lucide-react";
 import { PlayerHeadshot, TeamLogo } from "@/components/TeamLogo";
 import { extractPlayerId, extractPlayerName, extractTeamsFromGame } from "@/lib/player-ids";
+import { useEdgeArticles } from "@/hooks/use-edge-articles";
 
 const CATEGORY_COLORS: Record<string, string> = {
   "DEEP DIVE": "#1D428A",
@@ -11,6 +12,10 @@ const CATEGORY_COLORS: Record<string, string> = {
   "SCOUTING": "#008248",
   "POWER RANKINGS": "#C8102E",
   "FILM ROOM": "#888",
+  "EDGE PICK": "#C8102E",
+  "MATCHUP": "#F5A623",
+  "GAME PREVIEW": "#1D428A",
+  "PLAYER WATCH": "#008248",
 };
 
 const NBA_TEAM_IDS: Record<string, number> = {
@@ -35,16 +40,29 @@ const PLAYER_TEAMS: Record<string, string> = {
   "LeBron James": "LAL", "LeBron": "LAL",
   "Luka Doncic": "DAL", "Luka": "DAL",
   "Stephen Curry": "GSW", "Curry": "GSW",
+  // Edge article player coverage
+  "Trae Young": "ATL", "Cam Thomas": "BKN", "LaMelo Ball": "CHA",
+  "Zach LaVine": "CHI", "Donovan Mitchell": "CLE", "Cade Cunningham": "DET",
+  "Jalen Green": "HOU", "Tyrese Haliburton": "IND", "James Harden": "LAC",
+  "Ja Morant": "MEM", "Jimmy Butler": "MIA", "Giannis Antetokounmpo": "MIL",
+  "Zion Williamson": "NOP", "Paolo Banchero": "ORL", "Joel Embiid": "PHI",
+  "Kevin Durant": "PHX", "Anfernee Simons": "POR", "De'Aaron Fox": "SAC",
+  "Scottie Barnes": "TOR", "Lauri Markkanen": "UTA", "Jordan Poole": "WAS",
 };
 
 const TEAM_COLORS: Record<string, string> = {
   OKC: "#007AC1", DEN: "#0E2240", SAS: "#C4CED4", NYK: "#006BB6",
   MIN: "#0C2340", BOS: "#007A33", LAL: "#552583", DAL: "#00538C",
   GSW: "#1D428A", MIA: "#98002E", MIL: "#00471B", PHI: "#006BB6",
+  ATL: "#E03A3E", BKN: "#000000", CHA: "#1D1160", CHI: "#CE1141",
+  CLE: "#860038", DET: "#C8102E", HOU: "#CE1141", IND: "#002D62",
+  LAC: "#C8102E", MEM: "#5D76A9", NOP: "#0C2340", ORL: "#0077C0",
+  PHX: "#1D1160", POR: "#E03A3E", SAC: "#5A2D81", TOR: "#CE1141",
+  UTA: "#002B5C", WAS: "#002B5C",
 };
 
 /** Feature card — NBA.com style hero with giant headshot + team color bg */
-function FeatureCard({ article }: { article: typeof ARENA_ARTICLES[0] }) {
+function FeatureCard({ article }: { article: typeof ARENA_ARTICLES[0] & { author?: string } }) {
   const fullText = `${article.title} ${article.excerpt}`;
   const playerId = extractPlayerId(fullText);
   const playerName = extractPlayerName(fullText);
@@ -79,6 +97,11 @@ function FeatureCard({ article }: { article: typeof ARENA_ARTICLES[0] }) {
             style={{ background: catColor, borderRadius: 4 }}>
             {article.category}
           </span>
+          {article.author === "Edge AI" && (
+            <span className="flex items-center gap-1 font-condensed font-bold text-[9px] uppercase tracking-[0.5px] px-1.5 py-0.5 text-white bg-[#C8102E] rounded">
+              <Zap size={8} /> LIVE
+            </span>
+          )}
           <div className="flex items-center gap-1 text-white/40">
             <Clock size={10} />
             <span className="font-mono text-[10px]">{article.readTime}</span>
@@ -99,7 +122,7 @@ function FeatureCard({ article }: { article: typeof ARENA_ARTICLES[0] }) {
 }
 
 /** Analysis tile — player headshot hero style */
-function ArticleTile({ article }: { article: typeof ARENA_ARTICLES[0] }) {
+function ArticleTile({ article }: { article: typeof ARENA_ARTICLES[0] & { author?: string } }) {
   const fullText = `${article.title} ${article.excerpt}`;
   const playerId = extractPlayerId(fullText);
   const playerName = extractPlayerName(fullText);
@@ -156,9 +179,16 @@ function ArticleTile({ article }: { article: typeof ARENA_ARTICLES[0] }) {
         <p className="font-sans text-[11px] text-[#888] leading-relaxed line-clamp-2">
           {article.excerpt}
         </p>
-        <div className="flex items-center gap-1 mt-2 text-[#CCC]">
-          <Clock size={9} />
-          <span className="font-mono text-[9px]">{article.readTime}</span>
+        <div className="flex items-center gap-2 mt-2 text-[#CCC]">
+          <div className="flex items-center gap-1">
+            <Clock size={9} />
+            <span className="font-mono text-[9px]">{article.readTime}</span>
+          </div>
+          {article.author === "Edge AI" && (
+            <span className="flex items-center gap-0.5 font-condensed font-bold text-[8px] uppercase tracking-[0.5px] px-1 py-0.5 text-white bg-[#C8102E] rounded">
+              <Zap size={7} /> LIVE
+            </span>
+          )}
         </div>
       </div>
     </div>
@@ -169,9 +199,18 @@ export function Arena() {
   const [email, setEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string>("All");
+  const { articles: liveArticles, isLive } = useEdgeArticles();
 
-  const feature = ARENA_ARTICLES.find((a) => a.isFeature);
-  const secondary = ARENA_ARTICLES.filter((a) => !a.isFeature);
+  // Merge live Edge articles with static ARENA_ARTICLES
+  const allArticles = liveArticles.length > 0
+    ? [
+        ...liveArticles.map(a => ({ ...a, author: "Edge AI", date: new Date().toLocaleDateString(), isFeature: false })),
+        ...ARENA_ARTICLES,
+      ]
+    : ARENA_ARTICLES;
+
+  const feature = allArticles.find((a) => a.isFeature);
+  const secondary = allArticles.filter((a) => !a.isFeature);
 
   const categories = ["All", ...Object.keys(CATEGORY_COLORS)];
   const filtered = activeCategory === "All"
@@ -188,6 +227,11 @@ export function Arena() {
             <h1 className="font-condensed font-bold text-[28px] uppercase text-white leading-none tracking-[0.5px]">
               The Arena
             </h1>
+            {isLive && (
+              <span className="flex items-center gap-1 font-condensed font-bold text-[10px] uppercase tracking-[0.5px] px-2 py-0.5 text-white bg-[#C8102E] rounded ml-2">
+                <Zap size={10} /> EDGE LIVE
+              </span>
+            )}
           </div>
           <p className="font-sans text-[13px] text-[#888]">
             Deep dives, film room breakdowns, and editorial analysis from the Courtside desk.

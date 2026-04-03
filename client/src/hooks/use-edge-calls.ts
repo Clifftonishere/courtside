@@ -1,9 +1,9 @@
 /**
  * useEdgeCalls — fetches real priced bets from Edge VPS → Courtside Calls
- * Falls back to mock polls if Edge VPS unreachable
+ * Falls back to mock markets if Edge VPS unreachable
  */
 import { useState, useEffect } from "react";
-import { ACTIVE_POLLS } from "@/lib/mock-data";
+import { ACTIVE_MARKETS } from "@/lib/mock-data";
 
 export interface EdgeCall {
   id: string;
@@ -20,7 +20,7 @@ export interface EdgeCall {
   decimalOdds?: number;
 }
 
-function edgeBetToPoll(bet: any, idx: number): EdgeCall {
+function edgeBetToMarket(bet: any, idx: number): EdgeCall {
   const prob = Math.round((bet.probability || 0.5) * 100);
   const conf: "HIGH" | "MED" | "COND" = prob >= 65 ? "HIGH" : prob >= 52 ? "MED" : "COND";
   const verdict = prob >= 55 ? "LEAN OVER" : prob <= 45 ? "LEAN UNDER" : "TOSS UP";
@@ -59,10 +59,10 @@ export function useEdgeCalls() {
 
         if (data.error || !data.games || data.games.length === 0) {
           // Fall back to mock
-          setCalls(ACTIVE_POLLS as any);
+          setCalls(ACTIVE_MARKETS as any);
           setIsLive(false);
         } else {
-          // Flatten game bets into polls, take top 6 by bet amount
+          // Flatten game bets into markets, take top 6 by bet amount
           const allBets: any[] = [];
           for (const game of data.games || []) {
             for (const bet of game.bets || []) {
@@ -72,12 +72,12 @@ export function useEdgeCalls() {
           const top = allBets
             .sort((a, b) => (b.bet_amount || 0) - (a.bet_amount || 0))
             .slice(0, 6)
-            .map(edgeBetToPoll);
-          setCalls(top.length > 0 ? top : ACTIVE_POLLS as any);
+            .map(edgeBetToMarket);
+          setCalls(top.length > 0 ? top : ACTIVE_MARKETS as any);
           setIsLive(top.length > 0);
         }
       } catch (e) {
-        setCalls(ACTIVE_POLLS as any);
+        setCalls(ACTIVE_MARKETS as any);
         setIsLive(false);
       } finally {
         setLoading(false);

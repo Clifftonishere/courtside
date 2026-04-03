@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { User, Bell, Plus, X, Twitter, Instagram, Star, TrendingUp, CheckCircle, XCircle } from "lucide-react";
-import { ACTIVE_POLLS, RESOLVED_POLLS, LEADERBOARD, type ConfTier } from "@/lib/mock-data";
+import { ACTIVE_MARKETS, RESOLVED_MARKETS, LEADERBOARD, type ConfTier } from "@/lib/mock-data";
 import { TeamLogo, PlayerHeadshot } from "@/components/TeamLogo";
 import { PollCard } from "@/components/PollCard";
 
@@ -47,9 +47,9 @@ const USER = {
 };
 
 const MY_CALLS = [
-  { ...RESOLVED_POLLS[0], myVote: "agree", status: "resolved" },
-  { ...RESOLVED_POLLS[1], myVote: "agree", status: "resolved" },
-  { ...RESOLVED_POLLS[2], myVote: "fade", status: "resolved" },
+  { ...RESOLVED_MARKETS[0], myVote: "agree", status: "resolved" },
+  { ...RESOLVED_MARKETS[1], myVote: "agree", status: "resolved" },
+  { ...RESOLVED_MARKETS[2], myVote: "fade", status: "resolved" },
 ];
 
 type ProfileTab = "overview" | "live" | "resolved";
@@ -240,7 +240,7 @@ export function Profile() {
               <div className="bg-[#F0F4FF] border border-[#1D428A]/20 rounded-lg p-3 flex items-start gap-2">
                 <Bell size={13} className="text-[#1D428A] mt-0.5 flex-shrink-0" />
                 <p className="font-sans text-[12px] text-[#444] leading-relaxed">
-                  You'll receive notifications when any of your favourite teams or players have a game starting, active polls, or breaking news.
+                  You'll receive notifications when any of your favourite teams or players have a game starting, active markets, or breaking news.
                 </p>
               </div>
             </div>
@@ -294,13 +294,13 @@ export function Profile() {
         {activeTab === "live" && (
           <div>
             <p className="font-sans text-[12px] text-[#888] mb-4">Your active calls tonight.</p>
-            {ACTIVE_POLLS.length > 0 ? (
+            {ACTIVE_MARKETS.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {ACTIVE_POLLS.slice(0, 2).map(poll => <PollCard key={poll.id} poll={poll} />)}
+                {ACTIVE_MARKETS.slice(0, 2).map(poll => <PollCard key={poll.id} poll={poll} />)}
               </div>
             ) : (
               <div className="text-center py-12 bg-[#F5F5F5] rounded-lg">
-                <p className="font-sans text-[13px] text-[#888]">No live calls yet — head to Polls to vote.</p>
+                <p className="font-sans text-[13px] text-[#888]">No live calls yet — head to Markets to vote.</p>
               </div>
             )}
           </div>

@@ -652,6 +652,117 @@ async function handleMarketsToday(req, res) {
   }
 }
 
+// ── Articles Today — PrizePicks-style game previews ─────
+
+const TEAM_STARS = {
+  ATL: 'Trae Young', BOS: 'Jayson Tatum', BKN: 'Cam Thomas', CHA: 'LaMelo Ball',
+  CHI: 'Zach LaVine', CLE: 'Donovan Mitchell', DAL: 'Luka Doncic', DEN: 'Nikola Jokic',
+  DET: 'Cade Cunningham', GSW: 'Stephen Curry', HOU: 'Jalen Green', IND: 'Tyrese Haliburton',
+  LAC: 'James Harden', LAL: 'LeBron James', MEM: 'Ja Morant', MIA: 'Jimmy Butler',
+  MIL: 'Giannis Antetokounmpo', MIN: 'Anthony Edwards', NOP: 'Zion Williamson',
+  NYK: 'Jalen Brunson', OKC: 'Shai Gilgeous-Alexander', ORL: 'Paolo Banchero',
+  PHI: 'Joel Embiid', PHX: 'Kevin Durant', POR: 'Anfernee Simons', SAC: "De'Aaron Fox",
+  SAS: 'Victor Wembanyama', TOR: 'Scottie Barnes', UTA: 'Lauri Markkanen', WAS: 'Jordan Poole',
+};
+
+let articlesCache = null;
+const ARTICLES_CACHE_TTL = 30 * 60 * 1000; // 30 minutes
+
+async function generateArticles() {
+  // Check cache
+  if (articlesCache && Date.now() - articlesCache.timestamp < ARTICLES_CACHE_TTL) {
+    return articlesCache.data;
+  }
+
+  const marketsData = await getMarketsToday();
+  const markets = marketsData.markets || [];
+
+  // Deduplicate by game label
+  const seenGames = new Set();
+  const gameMarkets = [];
+  for (const m of markets) {
+    if (!m.game || seenGames.has(m.game)) continue;
+    seenGames.add(m.game);
+    // Gather all markets for this game
+    const related = markets.filter(r => r.game === m.game);
+    gameMarkets.push({ game: m.game, markets: related });
+  }
+
+  const articles = [];
+
+  for (const { game, markets: gameMkts } of gameMarkets) {
+    // Parse game label "CHI @ NYK" → away, home
+    const parts = game.split(' @ ');
+    if (parts.length !== 2) continue;
+    const [awayTri, homeTri] = parts;
+
+    // Find the game_winner market for edge data
+    const gwMarket = gameMkts.find(m => m.category === 'game_winner');
+    const edgeProb = gwMarket ? gwMarket.edge_probability : 0.5;
+    const edgeValue = gwMarket ? gwMarket.edge_value : 0;
+    const homeProb = edgeProb;
+    const awayProb = 1 - edgeProb;
+
+    // Determine favored team
+    const favoredTri = homeProb >= awayProb ? homeTri : awayTri;
+    const favoredProb = Math.max(homeProb, awayProb);
+    const favoredPct = Math.round(favoredProb * 100);
+    const underdogTri = favoredTri === homeTri ? awayTri : homeTri;
+    const playerFocus = TEAM_STARS[favoredTri] || TEAM_STARS[homeTri] || null;
+
+    let category, title, excerpt;
+
+    if (favoredProb >= 0.65) {
+      // HIGH confidence — Edge Pick
+      category = 'EDGE PICK';
+      title = `${favoredTri} Primed to Dominate ${underdogTri} Tonight`;
+      excerpt = `Edge models give ${favoredTri} a commanding ${favoredPct}% win probability. ${playerFocus || favoredTri} should set the tone early in what projects as a lopsided affair. The market hasn't fully adjusted to the mismatch.`;
+    } else if (Math.abs(edgeValue) > 0.03) {
+      // Significant edge_value — Matchup / mispricing
+      const direction = edgeValue > 0 ? 'underpriced' : 'overpriced';
+      const edgePP = Math.round(Math.abs(edgeValue) * 100);
+      category = 'MATCHUP';
+      title = `Market Mispricing: ${favoredTri} vs ${underdogTri} Edge Alert`;
+      excerpt = `Our models flag ${favoredTri} as ${direction} by ${edgePP} percentage points against ${underdogTri}. ${playerFocus ? playerFocus + ' leads a squad' : favoredTri + ' fields a roster'} the market is sleeping on tonight.`;
+    } else if (favoredProb >= 0.45 && favoredProb <= 0.55) {
+      // Close game
+      category = 'GAME PREVIEW';
+      title = `Coin Flip: ${awayTri} at ${homeTri} Should Be a Thriller`;
+      excerpt = `Edge models have this as a near-toss-up at ${favoredPct}-${100 - favoredPct}. Both teams are evenly matched, making this one of the most competitive games on tonight's slate. Watch for ${playerFocus || homeTri} to be the difference-maker.`;
+    } else {
+      // Default — Player Watch
+      category = 'PLAYER WATCH';
+      title = `${playerFocus || favoredTri} Spotlight: ${awayTri} at ${homeTri}`;
+      excerpt = `${playerFocus || favoredTri} takes center stage as ${awayTri} visits ${homeTri}. Edge models lean ${favoredTri} at ${favoredPct}% — look for a big performance to tilt the outcome.`;
+    }
+
+    articles.push({
+      id: `edge-article-${awayTri}-${homeTri}-${marketsData.date}`,
+      category,
+      title,
+      excerpt,
+      readTime: '3 min',
+      game,
+      playerFocus,
+    });
+  }
+
+  const result = { articles, date: marketsData.date, source: 'edge' };
+  articlesCache = { data: result, timestamp: Date.now() };
+  return result;
+}
+
+// GET /articles/today
+async function handleArticlesToday(req, res) {
+  try {
+    const data = await generateArticles();
+    json(res, 200, data);
+  } catch (e) {
+    console.error('[Articles] Error:', e.message);
+    json(res, 500, { error: e.message, articles: [], date: new Date().toISOString().split('T')[0], source: 'edge' });
+  }
+}
+
 // POST /analyze
 // Body: { query, detail? }
 async function handleAnalyze(req, res) {
@@ -725,6 +836,7 @@ const server = http.createServer(async (req, res) => {
     if (pathname === '/injuries' && req.method === 'GET') return await handleInjuries(req, res);
     if (pathname === '/games/today' && req.method === 'GET') return await handleGames(req, res);
     if (pathname === '/markets/today' && req.method === 'GET') return await handleMarketsToday(req, res);
+    if (pathname === '/articles/today' && req.method === 'GET') return await handleArticlesToday(req, res);
 
     json(res, 404, {
       error: 'Not found',
@@ -738,6 +850,7 @@ const server = http.createServer(async (req, res) => {
         'GET   /injuries': 'Live injury report',
         'GET   /games/today': "Today's NBA schedule",
         'GET   /markets/today': "Today's markets with Edge intelligence",
+        'GET   /articles/today': "Today's AI-generated game preview articles",
         'GET   /health': 'Health check',
       }
     });
@@ -758,5 +871,6 @@ server.listen(PORT, () => {
   console.log(`   GET   http://localhost:${PORT}/injuries`);
   console.log(`   GET   http://localhost:${PORT}/games/today`);
   console.log(`   GET   http://localhost:${PORT}/markets/today`);
+  console.log(`   GET   http://localhost:${PORT}/articles/today`);
   console.log(`   GET   http://localhost:${PORT}/health\n`);
 });

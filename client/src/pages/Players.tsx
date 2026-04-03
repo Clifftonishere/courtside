@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Search, Flame } from "lucide-react";
-import { PLAYERS, ACTIVE_POLLS, type ConfTier } from "@/lib/mock-data";
+import { PLAYERS, ACTIVE_MARKETS, type ConfTier } from "@/lib/mock-data";
 import { SectionHeader } from "@/components/SectionHeader";
 import { PlayerHeadshot } from "@/components/TeamLogo";
 import { PollCard } from "@/components/PollCard";
@@ -25,16 +25,16 @@ const CONF_COLORS: Record<string, string> = {
   HIGH: "#008248", MED: "#F5A623", COND: "#888",
 };
 
-// Compute Players of the Week based on poll participation
+// Compute Players of the Week based on market participation
 function computePlayersOfWeek(players: Player[]) {
   return players
     .map((p) => {
-      const relatedPolls = ACTIVE_POLLS.filter(poll =>
-        poll.proposition.toLowerCase().includes(p.name.split(" ").pop()?.toLowerCase() || "") ||
-        poll.game.includes(p.teamAbbr)
+      const relatedMarkets = ACTIVE_MARKETS.filter(market =>
+        market.proposition.toLowerCase().includes(p.name.split(" ").pop()?.toLowerCase() || "") ||
+        market.game.includes(p.teamAbbr)
       );
-      const totalVotes = relatedPolls.reduce((sum, poll) => sum + poll.totalVotes, 0);
-      const topPoll = relatedPolls.sort((a, b) => b.totalVotes - a.totalVotes)[0] || null;
+      const totalVotes = relatedMarkets.reduce((sum, market) => sum + market.totalVotes, 0);
+      const topPoll = relatedMarkets.sort((a, b) => b.totalVotes - a.totalVotes)[0] || null;
       return { player: p, totalVotes, topPoll };
     })
     .sort((a, b) => b.totalVotes - a.totalVotes)
@@ -59,7 +59,7 @@ function PlayerOfWeekCard({ player, topPoll, totalVotes }: { player: Player; top
             </div>
             <div className="font-condensed font-bold text-[16px] text-[#111] leading-tight">{player.name}</div>
             <div className="font-mono text-[10px] text-[#888]">{player.position} · {player.teamAbbr}</div>
-            <div className="font-mono text-[10px] text-[#1D428A] mt-0.5">{totalVotes.toLocaleString()} poll votes</div>
+            <div className="font-mono text-[10px] text-[#1D428A] mt-0.5">{totalVotes.toLocaleString()} market votes</div>
           </div>
         </div>
         <div className="grid grid-cols-3 gap-2 mb-3">
@@ -76,7 +76,7 @@ function PlayerOfWeekCard({ player, topPoll, totalVotes }: { player: Player; top
         </div>
         {topPoll && (
           <div className="border-t border-[#F0F0F0] pt-3">
-            <div className="font-condensed font-bold text-[9px] uppercase text-[#AAA] tracking-[0.5px] mb-2">Most Active Poll</div>
+            <div className="font-condensed font-bold text-[9px] uppercase text-[#AAA] tracking-[0.5px] mb-2">Most Active Market</div>
             <PollCard poll={topPoll} compact />
           </div>
         )}
@@ -166,7 +166,7 @@ export function Players({ onPlayerSelect }: PlayersProps) {
           <div className="flex items-center gap-2 mb-3">
             <Flame size={14} className="text-[#F5A623]" />
             <span className="font-condensed font-bold text-[14px] uppercase text-[#111] tracking-[0.5px]">Players of the Week</span>
-            <span className="font-mono text-[10px] text-[#888] ml-1">Ranked by poll participation</span>
+            <span className="font-mono text-[10px] text-[#888] ml-1">Ranked by market participation</span>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {playersOfWeek.map(({ player, topPoll, totalVotes }) => (

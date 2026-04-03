@@ -1,7 +1,7 @@
 import { Trophy, User } from "lucide-react";
 import { SEASON_RECORD } from "@/lib/mock-data";
 
-export type Page = "tonight" | "players" | "polls" | "arena" | "leaderboard" | "profile";
+export type Page = "tonight" | "players" | "markets" | "arena" | "leaderboard" | "profile";
 
 interface HeaderProps {
   activePage: Page;
@@ -11,7 +11,7 @@ interface HeaderProps {
 const NAV_ITEMS: { id: Page; label: string }[] = [
   { id: "tonight", label: "Tonight" },
   { id: "players", label: "Players" },
-  { id: "polls", label: "Polls" },
+  { id: "markets", label: "Markets" },
   { id: "arena", label: "Arena" },
   { id: "profile", label: "Profile" },
 ];

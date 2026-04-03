@@ -127,6 +127,19 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // ── Edge VPS — Articles Today (AI-generated game previews) ────────────
+  app.get("/api/edge/articles", async (req, res) => {
+    try {
+      const data = await fetchJSON(
+        "http://5.223.72.173:3747/articles/today",
+        { headers: { "x-api-key": "edge-dev-key" } }
+      );
+      res.json(data);
+    } catch (e: any) {
+      res.json({ articles: [], error: "Edge VPS unreachable" });
+    }
+  });
+
   // ── Edge VPS — Price a specific bet ───────────────────────────────────
   app.post("/api/edge/price", async (req, res) => {
     try {

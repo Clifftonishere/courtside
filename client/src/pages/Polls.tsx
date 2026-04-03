@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { RESOLVED_POLLS, LEADERBOARD } from "@/lib/mock-data";
+import { RESOLVED_MARKETS, LEADERBOARD } from "@/lib/mock-data";
 import { PollCard } from "@/components/PollCard";
 import { MarketCard } from "@/components/MarketCard";
 import { SectionHeader } from "@/components/SectionHeader";
@@ -26,9 +26,9 @@ const MY_STATS = {
 };
 
 const MY_CALLS = [
-  { ...RESOLVED_POLLS[0], myVote: "agree" },
-  { ...RESOLVED_POLLS[1], myVote: "agree" },
-  { ...RESOLVED_POLLS[2], myVote: "fade" },
+  { ...RESOLVED_MARKETS[0], myVote: "agree" },
+  { ...RESOLVED_MARKETS[1], myVote: "agree" },
+  { ...RESOLVED_MARKETS[2], myVote: "fade" },
 ];
 
 function MyStatsBanner() {
@@ -127,7 +127,7 @@ export function Polls() {
 
   const tabs: { key: Tab; label: string; count: number }[] = [
     { key: "active", label: "Edge Markets", count: markets.length },
-    { key: "resolved", label: "Resolved", count: RESOLVED_POLLS.length },
+    { key: "resolved", label: "Resolved", count: RESOLVED_MARKETS.length },
     { key: "my", label: "My Calls", count: MY_CALLS.length },
   ];
 
@@ -190,7 +190,7 @@ export function Polls() {
             )}
             {activeTab === "resolved" && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {RESOLVED_POLLS.map((poll) => <PollCard key={poll.id} poll={poll} />)}
+                {RESOLVED_MARKETS.map((poll) => <PollCard key={poll.id} poll={poll} />)}
               </div>
             )}
             {activeTab === "my" && (

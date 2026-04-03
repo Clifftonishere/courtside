@@ -28,6 +28,33 @@ export function Tonight({ onGameSelect }: TonightProps) {
   const topMarkets = markets.slice(0, 4);
   const today = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 
+  // Build trending signals from Edge markets
+  const signals = markets.length > 0
+    ? markets
+        .filter(m => m.confidence !== 'COND') // skip low-confidence
+        .slice(0, 6)
+        .map((m, i) => {
+          let label = '';
+          if (m.category === 'game_winner') {
+            const teamName = m.title.split(' to beat ')[0];
+            const shortName = teamName.split(' ').pop();
+            label = `${shortName || m.game.split(' @ ')[1]} to win vs ${m.game.split(' @ ')[0]}`;
+          } else if (m.category === 'total') {
+            label = m.title;
+          } else if (m.category === 'special') {
+            label = m.title;
+          } else {
+            label = m.title;
+          }
+          return {
+            id: `sig-${i}`,
+            label,
+            tag: m.confidence,
+            pct: Math.round(m.edge_probability * 100),
+          };
+        })
+    : TRENDING_INSIGHTS; // fallback to static mock
+
   return (
     <div className="min-h-screen bg-white">
       {/* Ask bar hero */}
@@ -72,7 +99,7 @@ export function Tonight({ onGameSelect }: TonightProps) {
         <div className="max-w-[1280px] mx-auto px-4">
           <SectionHeader title="Trending Signals" accentColor="#1D428A" />
           <div className="flex flex-wrap gap-2">
-            {TRENDING_INSIGHTS.map((insight) => (
+            {signals.map((insight) => (
               <button key={insight.id} data-testid={`btn-trend-${insight.id}`}
                 className="flex items-center gap-2 bg-white border border-[#E0E0E0] hover:border-[#1D428A] px-3 py-2 rounded-sm transition-colors">
                 <span className="font-condensed font-bold text-[9px] uppercase tracking-[0.5px] px-1 py-0.5"
@@ -129,7 +156,7 @@ export function Tonight({ onGameSelect }: TonightProps) {
             <div className="w-full md:w-[45%]">
               <div className="flex items-center justify-between">
                 <SectionHeader title="Edge Markets — Live" />
-                <a href="#polls" className="font-condensed font-semibold text-[11px] uppercase text-[#1D428A] hover:underline tracking-[0.5px] mb-3">
+                <a href="#markets" className="font-condensed font-semibold text-[11px] uppercase text-[#1D428A] hover:underline tracking-[0.5px] mb-3">
                   See all →
                 </a>
               </div>

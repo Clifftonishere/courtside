@@ -877,7 +877,7 @@ export const MOCK_ANALYSES = [
       confidence: "MED" as ConfTier,
       prob: 58,
       signal: "LEAN UNDER · 30.5",
-      pollProposition: "Brunson over 30 points vs BOS",
+      marketProposition: "Brunson over 30 points vs BOS",
       verdictLabel: "LEAN UNDER",
     },
   },
@@ -899,7 +899,7 @@ export const MOCK_ANALYSES = [
       confidence: "HIGH" as ConfTier,
       prob: 74,
       signal: "DEN COVER · 74%",
-      pollProposition: "Denver covers -7.5 vs Lakers",
+      marketProposition: "Denver covers -7.5 vs Lakers",
       verdictLabel: "LEAN OVER",
     },
   },
@@ -921,7 +921,7 @@ export const MOCK_ANALYSES = [
       confidence: "HIGH" as ConfTier,
       prob: 72,
       signal: "MIN -6.0 · +7.3% EDGE",
-      pollProposition: "Minnesota covers -6 vs Golden State",
+      marketProposition: "Minnesota covers -6 vs Golden State",
       verdictLabel: "LEAN OVER",
     },
   },
@@ -1123,7 +1123,7 @@ export const STAT_LEADERS = {
   ],
 };
 
-export const ACTIVE_POLLS = [
+export const ACTIVE_MARKETS = [
   {
     id: "p1",
     proposition: "Brunson over 30 points vs BOS",
@@ -1178,7 +1178,7 @@ export const ACTIVE_POLLS = [
   },
 ];
 
-export const RESOLVED_POLLS = [
+export const RESOLVED_MARKETS = [
   {
     id: "rp1",
     proposition: "Thunder win by 10+ vs Wizards",

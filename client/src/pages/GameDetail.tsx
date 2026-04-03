@@ -2,7 +2,7 @@ import { ArrowLeft, Users, TrendingUp, Shield } from "lucide-react";
 import { TeamLogo, PlayerHeadshot } from "@/components/TeamLogo";
 import { PollCard } from "@/components/PollCard";
 import { NBA_TEAM_IDS } from "@/lib/player-ids";
-import { ACTIVE_POLLS, PLAYERS, type ConfTier } from "@/lib/mock-data";
+import { ACTIVE_MARKETS, PLAYERS, type ConfTier } from "@/lib/mock-data";
 
 // Coaching tendencies per team
 const COACHING_TENDENCIES: Record<string, { coach: string; style: string; notes: string[] }> = {
@@ -211,10 +211,10 @@ export function GameDetail({ game, onBack }: GameDetailProps) {
   const awayAbbr = game.away.abbr;
   const homeAbbr = game.home.abbr;
 
-  // Filter polls related to this game
-  const gamePollText = `${awayAbbr} @ ${homeAbbr}`;
-  const relatedPolls = [...ACTIVE_POLLS]
-    .filter(p => p.game === gamePollText || p.game.includes(awayAbbr) || p.game.includes(homeAbbr))
+  // Filter markets related to this game
+  const gameMarketText = `${awayAbbr} @ ${homeAbbr}`;
+  const relatedMarkets = [...ACTIVE_MARKETS]
+    .filter(p => p.game === gameMarketText || p.game.includes(awayAbbr) || p.game.includes(homeAbbr))
     .sort((a, b) => b.totalVotes - a.totalVotes)
     .slice(0, 5);
 
@@ -322,14 +322,14 @@ export function GameDetail({ game, onBack }: GameDetailProps) {
             </div>
           </div>
 
-          {/* Right: Top polls */}
+          {/* Right: Top markets */}
           <div>
             <div className="font-condensed font-bold text-[13px] uppercase text-[#111] tracking-[0.5px] mb-3">
               Top Calls — {awayAbbr} @ {homeAbbr}
             </div>
-            {relatedPolls.length > 0 ? (
+            {relatedMarkets.length > 0 ? (
               <div className="space-y-3">
-                {relatedPolls.map((poll) => (
+                {relatedMarkets.map((poll) => (
                   <PollCard key={poll.id} poll={poll} compact />
                 ))}
               </div>

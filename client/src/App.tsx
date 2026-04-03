@@ -52,7 +52,7 @@ function AppContent() {
         {activePage === "players" && selectedPlayerId && (
           <PlayerProfile playerId={selectedPlayerId} onBack={() => setSelectedPlayerId(null)} />
         )}
-        {activePage === "polls" && <Polls />}
+        {activePage === "markets" && <Polls />}
         {activePage === "arena" && <Arena />}
         {activePage === "profile" && <Profile />}
         {activePage === "leaderboard" && <LeaderboardPage />}

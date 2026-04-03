@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Edge Protocol - Portfolio</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.4/ethers.umd.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0d1117; color: #e6edf3; min-height: 100vh; }
+  a { color: #58a6ff; text-decoration: none; }
+
+  .header { display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; border-bottom: 1px solid #21262d; background: #161b22; }
+  .header h1 { font-size: 18px; font-weight: 600; }
+  .header-right { display: flex; align-items: center; gap: 16px; }
+  .balance-display { font-size: 14px; color: #8b949e; }
+  .balance-display span { color: #e6edf3; font-weight: 600; }
+  .btn { padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; font-size: 13px; font-weight: 500; }
+  .btn-primary { background: #238636; color: #fff; }
+  .btn-primary:hover { background: #2ea043; }
+  .btn-outline { background: transparent; border: 1px solid #30363d; color: #e6edf3; }
+  .btn-outline:hover { background: #21262d; }
+  .btn-danger { background: #da3633; color: #fff; }
+  .btn-danger:hover { background: #f85149; }
+
+  .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+
+  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+  .stat-card { background: #161b22; border: 1px solid #21262d; border-radius: 8px; padding: 16px; }
+  .stat-label { font-size: 12px; color: #8b949e; text-transform: uppercase; margin-bottom: 4px; }
+  .stat-value { font-size: 24px; font-weight: 700; }
+  .stat-sub { font-size: 12px; color: #8b949e; margin-top: 4px; }
+  .positive { color: #3fb950; }
+  .negative { color: #f85149; }
+
+  .section { background: #161b22; border: 1px solid #21262d; border-radius: 8px; margin-bottom: 24px; }
+  .section-header { padding: 16px; border-bottom: 1px solid #21262d; display: flex; justify-content: space-between; align-items: center; }
+  .section-header h2 { font-size: 16px; font-weight: 600; }
+  .tabs { display: flex; gap: 0; }
+  .tab { padding: 8px 16px; font-size: 13px; color: #8b949e; cursor: pointer; border-bottom: 2px solid transparent; }
+  .tab.active { color: #e6edf3; border-bottom-color: #f78166; }
+
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; padding: 10px 16px; font-size: 12px; color: #8b949e; text-transform: uppercase; border-bottom: 1px solid #21262d; }
+  td { padding: 12px 16px; font-size: 14px; border-bottom: 1px solid #21262d; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover { background: #1c2128; }
+
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 500; }
+  .badge-win { background: #1b4332; color: #3fb950; }
+  .badge-loss { background: #3d1f1f; color: #f85149; }
+  .badge-open { background: #1f2d3d; color: #58a6ff; }
+  .badge-limit { background: #2d2000; color: #d29922; }
+
+  .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 100; justify-content: center; align-items: center; }
+  .modal-overlay.active { display: flex; }
+  .modal { background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 24px; width: 400px; }
+  .modal h3 { margin-bottom: 16px; }
+  .modal input { width: 100%; padding: 10px; background: #0d1117; border: 1px solid #30363d; border-radius: 6px; color: #e6edf3; font-size: 14px; margin-bottom: 12px; }
+  .modal .btn-row { display: flex; gap: 8px; justify-content: flex-end; }
+
+  .empty { text-align: center; padding: 40px; color: #8b949e; }
+  .loading { text-align: center; padding: 20px; color: #8b949e; }
+  .refresh-btn { cursor: pointer; color: #8b949e; font-size: 14px; }
+  .refresh-btn:hover { color: #e6edf3; }
+
+  @media (max-width: 768px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Edge Protocol</h1>
+  <div class="header-right">
+    <div class="balance-display">USDC: <span id="usdc-balance">--</span></div>
+    <div class="balance-display">POL: <span id="pol-balance">--</span></div>
+    <button class="btn btn-primary" id="connect-btn" onclick="connectWallet()">Connect Wallet</button>
+  </div>
+</div>
+
+<div class="container">
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-label">Portfolio Value</div>
+      <div class="stat-value" id="portfolio-value">--</div>
+      <div class="stat-sub" id="portfolio-invested">-- invested</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Total P&L</div>
+      <div class="stat-value" id="total-pnl">--</div>
+      <div class="stat-sub" id="pnl-today">Today: --</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Win Rate</div>
+      <div class="stat-value" id="win-rate">--</div>
+      <div class="stat-sub" id="total-trades">-- trades</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">USDC Balance</div>
+      <div class="stat-value" id="wallet-balance">--</div>
+      <div class="stat-sub">
+        <button class="btn btn-outline" onclick="showModal('deposit')" style="margin-right:4px">Deposit</button>
+        <button class="btn btn-outline" onclick="showModal('withdraw')">Withdraw</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <div style="display:flex;align-items:center;gap:12px">
+        <h2>Positions</h2>
+        <div class="tabs">
+          <div class="tab active" onclick="showTab('active')">Active</div>
+          <div class="tab" onclick="showTab('closed')">Closed</div>
+        </div>
+      </div>
+      <span class="refresh-btn" onclick="loadPortfolio()">Refresh</span>
+    </div>
+    <div id="positions-active">
+      <table>
+        <thead><tr><th>Market</th><th>Side</th><th>Entry</th><th>Current</th><th>Shares</th><th>Cost</th><th>Value</th><th>P&L</th><th>TP/SL</th></tr></thead>
+        <tbody id="active-tbody"><tr><td colspan="9" class="loading">Loading...</td></tr></tbody>
+      </table>
+    </div>
+    <div id="positions-closed" style="display:none">
+      <table>
+        <thead><tr><th>Market</th><th>Side</th><th>Entry</th><th>Exit</th><th>P&L</th><th>Result</th><th>Date</th></tr></thead>
+        <tbody id="closed-tbody"><tr><td colspan="7" class="loading">Loading...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <h2>Trade History</h2>
+    </div>
+    <table>
+      <thead><tr><th>Date</th><th>Action</th><th>Market</th><th>Side</th><th>Price</th><th>Size</th><th>P&L</th></tr></thead>
+      <tbody id="trades-tbody"><tr><td colspan="7" class="loading">Loading...</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Deposit/Withdraw Modal -->
+<div class="modal-overlay" id="modal-overlay" onclick="hideModal()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <h3 id="modal-title">Deposit USDC</h3>
+    <input type="number" id="modal-amount" placeholder="Amount (USDC)" step="0.01" />
+    <p style="font-size:12px;color:#8b949e;margin-bottom:12px" id="modal-info"></p>
+    <div class="btn-row">
+      <button class="btn btn-outline" onclick="hideModal()">Cancel</button>
+      <button class="btn btn-primary" id="modal-action-btn" onclick="executeTransaction()">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API_BASE = 'https://api.courtside.zone';
+const API_KEY = 'edge-dev-key';
+const WALLET_ADDR = '0x9b4AA12f77434FFd82C8f9b2C88556EBdDF5500F';
+const USDC_ADDR = '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174';
+const POLYGON_RPC = 'https://polygon-bor-rpc.publicnode.com';
+const USDC_ABI = ['function balanceOf(address) view returns (uint256)', 'function transfer(address,uint256) returns (bool)', 'function approve(address,uint256) returns (bool)'];
+
+let provider = null;
+let signer = null;
+let walletAddress = null;
+let modalMode = 'deposit';
+
+// ── API Calls ────────────────────────────────────────────
+
+async function apiFetch(path) {
+  const res = await fetch(`${API_BASE}${path}`, { headers: { 'x-api-key': API_KEY } });
+  return res.json();
+}
+
+async function loadPortfolio() {
+  try {
+    const [portfolio, tradesData] = await Promise.all([
+      apiFetch('/portfolio'),
+      apiFetch('/trades'),
+    ]);
+
+    // Stats
+    const activeValue = (portfolio.active || []).reduce((s, p) => s + (p.livePrice || p.price) * p.shares, 0);
+    document.getElementById('portfolio-value').textContent = '$' + activeValue.toFixed(2);
+    document.getElementById('portfolio-invested').textContent = '$' + portfolio.totalInvested + ' invested';
+
+    const pnlEl = document.getElementById('total-pnl');
+    pnlEl.textContent = (portfolio.totalPnl >= 0 ? '+$' : '-$') + Math.abs(portfolio.totalPnl).toFixed(2);
+    pnlEl.className = 'stat-value ' + (portfolio.totalPnl >= 0 ? 'positive' : 'negative');
+
+    document.getElementById('pnl-today').textContent = 'Today: ' + (portfolio.dailyPnl >= 0 ? '+$' : '-$') + Math.abs(portfolio.dailyPnl).toFixed(2);
+    document.getElementById('win-rate').textContent = portfolio.winRate;
+    document.getElementById('total-trades').textContent = portfolio.totalTrades + ' trades';
+
+    // Active positions
+    const activeTbody = document.getElementById('active-tbody');
+    if (portfolio.active.length === 0) {
+      activeTbody.innerHTML = '<tr><td colspan="9" class="empty">No active positions</td></tr>';
+    } else {
+      activeTbody.innerHTML = portfolio.active.map(p => {
+        const cost = (p.price * p.shares).toFixed(2);
+        const value = ((p.livePrice || p.price) * p.shares).toFixed(2);
+        const pnl = parseFloat(p.unrealizedPnl || 0);
+        const pnlClass = pnl >= 0 ? 'positive' : 'negative';
+        const tp = p.tp1 ? `${(p.tp1*100).toFixed(0)}c / ${(p.stopLoss*100).toFixed(0)}c` : '--';
+        return `<tr>
+          <td><strong>${p.team || p.game || '?'}</strong></td>
+          <td>${p.side}</td>
+          <td>${(p.price*100).toFixed(0)}c</td>
+          <td>${p.livePrice ? (p.livePrice*100).toFixed(1)+'c' : '--'}</td>
+          <td>${p.shares}</td>
+          <td>$${cost}</td>
+          <td>$${value}</td>
+          <td class="${pnlClass}">${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)}</td>
+          <td style="font-size:12px">${tp}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    // Closed positions
+    const closedTbody = document.getElementById('closed-tbody');
+    if (portfolio.closed.length === 0) {
+      closedTbody.innerHTML = '<tr><td colspan="7" class="empty">No closed positions</td></tr>';
+    } else {
+      closedTbody.innerHTML = portfolio.closed.map(p => {
+        const pnl = p.settlementPnl || ((p.closePrice || 0) - p.price) * p.shares;
+        const pnlClass = pnl >= 0 ? 'positive' : 'negative';
+        const badge = pnl >= 0 ? '<span class="badge badge-win">WIN</span>' : '<span class="badge badge-loss">LOSS</span>';
+        return `<tr>
+          <td>${p.team || p.game || '?'}</td>
+          <td>${p.side}</td>
+          <td>${(p.price*100).toFixed(0)}c</td>
+          <td>${p.closePrice != null ? (p.closePrice*100).toFixed(0)+'c' : '--'}</td>
+          <td class="${pnlClass}">${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)}</td>
+          <td>${badge}</td>
+          <td style="font-size:12px">${p.closedAt ? p.closedAt.slice(0,10) : '--'}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    // Trade history
+    const tradesTbody = document.getElementById('trades-tbody');
+    const trades = tradesData.trades || [];
+    if (trades.length === 0) {
+      tradesTbody.innerHTML = '<tr><td colspan="7" class="empty">No trades yet</td></tr>';
+    } else {
+      tradesTbody.innerHTML = trades.slice(0, 50).map(t => {
+        const pnl = parseFloat(t.pnl || 0);
+        const hasPnl = t.action.includes('SELL') || t.action.includes('SETTLEMENT');
+        const pnlClass = pnl >= 0 ? 'positive' : 'negative';
+        const actionBadge = t.action.includes('WIN') ? 'badge-win' : t.action.includes('LOSS') ? 'badge-loss' : t.action.includes('ORDER') ? 'badge-open' : 'badge-limit';
+        return `<tr>
+          <td style="font-size:12px">${t.timestamp ? t.timestamp.slice(0,16).replace('T',' ') : '--'}</td>
+          <td><span class="badge ${actionBadge}">${t.action.replace('SETTLEMENT_','').replace('SELL_','')}</span></td>
+          <td>${t.team || t.game || '?'}</td>
+          <td>${t.side || '--'}</td>
+          <td>${t.price ? (t.price*100).toFixed(0)+'c' : '--'}</td>
+          <td>${t.size ? '$'+t.size : t.shares ? t.shares+'sh' : '--'}</td>
+          <td class="${hasPnl ? pnlClass : ''}">${hasPnl ? (pnl >= 0 ? '+' : '') + '$' + pnl.toFixed(2) : '--'}</td>
+        </tr>`;
+      }).join('');
+    }
+
+  } catch (e) {
+    console.error('Failed to load portfolio:', e);
+    document.getElementById('active-tbody').innerHTML = '<tr><td colspan="9" class="empty">Failed to load. Check API connection.</td></tr>';
+  }
+}
+
+// ── Wallet ────────────────────────────────────────────────
+
+async function connectWallet() {
+  if (!window.ethereum) { alert('Install MetaMask to connect wallet'); return; }
+  try {
+    provider = new ethers.BrowserProvider(window.ethereum);
+    await provider.send('wallet_switchEthereumChain', [{ chainId: '0x89' }]).catch(async () => {
+      await provider.send('wallet_addEthereumChain', [{ chainId: '0x89', chainName: 'Polygon', rpcUrls: [POLYGON_RPC], nativeCurrency: { name: 'POL', symbol: 'POL', decimals: 18 } }]);
+    });
+    signer = await provider.getSigner();
+    walletAddress = await signer.getAddress();
+    document.getElementById('connect-btn').textContent = walletAddress.slice(0,6) + '...' + walletAddress.slice(-4);
+    await loadBalances();
+  } catch (e) {
+    console.error('Wallet connect failed:', e);
+    alert('Failed to connect: ' + e.message);
+  }
+}
+
+async function loadBalances() {
+  try {
+    const rpcProvider = new ethers.JsonRpcProvider(POLYGON_RPC);
+    const usdc = new ethers.Contract(USDC_ADDR, USDC_ABI, rpcProvider);
+    const addr = walletAddress || WALLET_ADDR;
+
+    const [usdcBal, polBal] = await Promise.all([
+      usdc.balanceOf(addr),
+      rpcProvider.getBalance(addr),
+    ]);
+
+    const usdcFormatted = (Number(usdcBal) / 1e6).toFixed(2);
+    const polFormatted = parseFloat(ethers.formatEther(polBal)).toFixed(2);
+
+    document.getElementById('usdc-balance').textContent = '$' + usdcFormatted;
+    document.getElementById('pol-balance').textContent = polFormatted;
+    document.getElementById('wallet-balance').textContent = '$' + usdcFormatted;
+  } catch (e) {
+    console.error('Balance load failed:', e);
+  }
+}
+
+// ── Tabs ──────────────────────────────────────────────────
+
+function showTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('positions-active').style.display = tab === 'active' ? '' : 'none';
+  document.getElementById('positions-closed').style.display = tab === 'closed' ? '' : 'none';
+}
+
+// ── Modal ─────────────────────────────────────────────────
+
+function showModal(mode) {
+  modalMode = mode;
+  document.getElementById('modal-title').textContent = mode === 'deposit' ? 'Deposit USDC' : 'Withdraw USDC';
+  document.getElementById('modal-info').textContent = mode === 'deposit'
+    ? 'Transfer USDC to your trading wallet on Polygon.'
+    : 'Transfer USDC from your trading wallet to another address.';
+  document.getElementById('modal-action-btn').textContent = mode === 'deposit' ? 'Deposit' : 'Withdraw';
+  document.getElementById('modal-action-btn').className = mode === 'deposit' ? 'btn btn-primary' : 'btn btn-danger';
+  document.getElementById('modal-amount').value = '';
+  document.getElementById('modal-overlay').classList.add('active');
+}
+
+function hideModal() {
+  document.getElementById('modal-overlay').classList.remove('active');
+}
+
+async function executeTransaction() {
+  if (!signer) { alert('Connect wallet first'); return; }
+  const amount = parseFloat(document.getElementById('modal-amount').value);
+  if (!amount || amount <= 0) { alert('Enter a valid amount'); return; }
+
+  const usdc = new ethers.Contract(USDC_ADDR, USDC_ABI, signer);
+  const amountWei = BigInt(Math.round(amount * 1e6));
+
+  try {
+    if (modalMode === 'deposit') {
+      // For deposit: user sends USDC to their own trading wallet
+      // This is a self-transfer if already on the right wallet
+      alert('Your trading wallet is ' + WALLET_ADDR + '. Send USDC to this address on Polygon.');
+    } else {
+      // Withdraw: transfer USDC out
+      const toAddr = prompt('Enter destination address:');
+      if (!toAddr || !ethers.isAddress(toAddr)) { alert('Invalid address'); return; }
+      const tx = await usdc.transfer(toAddr, amountWei);
+      alert('Transaction sent: ' + tx.hash);
+      await tx.wait();
+      alert('Withdrawal confirmed!');
+      await loadBalances();
+    }
+    hideModal();
+  } catch (e) {
+    alert('Transaction failed: ' + e.message);
+  }
+}
+
+// ── Init ──────────────────────────────────────────────────
+loadPortfolio();
+loadBalances();
+setInterval(loadPortfolio, 60000); // refresh every 60s
+</script>
+</body>
+</html>

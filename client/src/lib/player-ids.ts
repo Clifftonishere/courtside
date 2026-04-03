@@ -2,7 +2,7 @@
  * player-ids.ts
  * Shared utility to resolve NBA player IDs from names,
  * and extract player/team references from text strings.
- * Used by Polls, Arena, and Players pages.
+ * Used by Markets, Arena, and Players pages.
  */
 
 // Known player name → NBA player ID

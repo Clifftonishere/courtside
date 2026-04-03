@@ -154,7 +154,7 @@ export function LeaderboardPage() {
                 <div className="pt-2 border-t border-[#F0F0F0]">
                   <div className="flex items-center gap-3">
                     <span className="font-mono font-bold text-[14px] text-[#1D428A]">+2</span>
-                    <p className="font-sans text-[11px] text-[#888]">Bonus when your created poll gets 10+ votes</p>
+                    <p className="font-sans text-[11px] text-[#888]">Bonus when your created market gets 10+ votes</p>
                   </div>
                 </div>
                 <p className="font-sans text-[11px] text-[#AAA] pt-1">Incorrect votes earn 0 points — never negative. Keep it fun.</p>
