@@ -174,71 +174,76 @@ function parsePeriodText(game: any): {
   return { quarter: period, timeRemaining: time || null };
 }
 
-async function fetchNBACDNScoreboard(): Promise<LiveGame[]> {
-  const res = await fetch(
-    "https://cdn.nba.com/static/json/liveData/scoreboard/todaysScoreboard_00.json",
-    { cache: "no-store" },
-  );
-  if (!res.ok) throw new Error("CDN fetch failed");
+// Fetch games from balldontlie API via server proxy (works for any date)
+async function fetchBDLGames(date?: string): Promise<LiveGame[]> {
+  const url = date ? `/api/nba/games/tonight?date=${date}` : `/api/nba/games/tonight`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("BDL fetch failed");
   const data = await res.json();
-  const games = data?.scoreboard?.games ?? [];
+  const games = data?.data ?? [];
 
   return games.map((g: any, idx: number) => {
-    const awayAbbr = mapTricode(g.awayTeam?.teamTricode || "");
-    const homeAbbr = mapTricode(g.homeTeam?.teamTricode || "");
-    const awayScore = g.awayTeam?.score ?? null;
-    const homeScore = g.homeTeam?.score ?? null;
+    const awayAbbr = mapTricode(g.visitor_team?.abbreviation || "");
+    const homeAbbr = mapTricode(g.home_team?.abbreviation || "");
+    const awayScore = g.visitor_team_score ?? null;
+    const homeScore = g.home_team_score ?? null;
 
-    const gameStatus = g.gameStatus; // 1=upcoming, 2=live, 3=final
-    const isLive = gameStatus === 2;
-    const isFinal = gameStatus === 3;
+    // Determine game status from BDL status field
+    // BDL status is a datetime string for upcoming, "Final" for finished, or period info for live
+    const statusStr = (g.status || "").toString();
+    const isFinal = statusStr === "Final" || statusStr.startsWith("Final");
+    const isLive = !isFinal && (homeScore !== null && homeScore > 0 || awayScore !== null && awayScore > 0) && !statusStr.includes("T");
+    const isUpcoming = !isFinal && !isLive;
 
-    const { quarter, timeRemaining } = parsePeriodText(g);
+    // Parse tipoff time from ISO status for upcoming games
+    let tipoffTime = "";
+    if (isUpcoming && statusStr.includes("T")) {
+      try {
+        const d = new Date(statusStr);
+        tipoffTime = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: "America/New_York" }) + " ET";
+      } catch { tipoffTime = statusStr; }
+    } else if (isFinal) {
+      tipoffTime = "FINAL";
+    } else if (isLive) {
+      tipoffTime = `LIVE · ${g.period ? `Q${g.period}` : ""}${g.time ? ` ${g.time}` : ""}`.trim();
+    }
 
     // Compute pick from simple home court + record model
-    const homeWins = parseInt(g.homeTeam?.wins || "40");
-    const awayWins = parseInt(g.awayTeam?.wins || "35");
+    const homeWins = g.home_team_score > (g.visitor_team_score || 0) ? 1 : 0;
     const homeAdvantage = 3.5;
-    const marginDiff = (homeWins - awayWins) * 0.15 + homeAdvantage;
+    const marginDiff = homeAdvantage; // simplified for BDL (no win/loss records in game data)
     const homeProb = sigmoid(marginDiff);
     const pickIsHome = homeProb >= 50;
     const pick = pickIsHome ? homeAbbr : awayAbbr;
     const pickProb = pickIsHome ? homeProb : 100 - homeProb;
 
-    const tipoffTime = g.gameStatusText || "";
-    const statusText = isFinal ? "final" : isLive ? "live" : "upcoming";
-
     return {
-      id: g.gameId || `game-${idx}`,
+      id: String(g.id || `game-${idx}`),
       away: {
         abbr: awayAbbr,
-        name: TEAM_NAMES[awayAbbr] || g.awayTeam?.teamName || awayAbbr,
-        record: `${g.awayTeam?.wins || 0}-${g.awayTeam?.losses || 0}`,
+        name: TEAM_NAMES[awayAbbr] || g.visitor_team?.full_name || awayAbbr,
+        record: "",
         teamId: NBA_TEAM_IDS[awayAbbr] || 0,
         spread: `+${marginDiff.toFixed(1)}`,
         ml: "+150",
       },
       home: {
         abbr: homeAbbr,
-        name: TEAM_NAMES[homeAbbr] || g.homeTeam?.teamName || homeAbbr,
-        record: `${g.homeTeam?.wins || 0}-${g.homeTeam?.losses || 0}`,
+        name: TEAM_NAMES[homeAbbr] || g.home_team?.full_name || homeAbbr,
+        record: "",
         teamId: NBA_TEAM_IDS[homeAbbr] || 0,
         spread: `${(-marginDiff).toFixed(1)}`,
         ml: "-170",
       },
-      tipoff: isLive
-        ? `LIVE · Q${quarter} ${timeRemaining}`
-        : isFinal
-          ? "FINAL"
-          : tipoffTime,
-      network: g.broadcasters?.nationalBroadcasters?.[0]?.shortName || "NBA TV",
-      status: statusText,
+      tipoff: tipoffTime,
+      network: "NBA TV",
+      status: isFinal ? "final" : isLive ? "live" : "upcoming" as "upcoming" | "live" | "final",
       isLive,
       isFinal,
-      awayScore: awayScore !== null ? Number(awayScore) : null,
-      homeScore: homeScore !== null ? Number(homeScore) : null,
-      quarter,
-      timeRemaining,
+      awayScore: awayScore !== null && awayScore !== 0 ? Number(awayScore) : isUpcoming ? null : 0,
+      homeScore: homeScore !== null && homeScore !== 0 ? Number(homeScore) : isUpcoming ? null : 0,
+      quarter: g.period || null,
+      timeRemaining: g.time || null,
       totalLine: "o/u 225.5",
       confidence: getConfidence(homeProb, pickIsHome),
       pick,
@@ -246,97 +251,7 @@ async function fetchNBACDNScoreboard(): Promise<LiveGame[]> {
       pickProb,
       winProbData: generateWinProbCurve(homeProb, homeAbbr, awayAbbr),
       keyStats: [
-        {
-          label: `${homeAbbr} Home Record`,
-          value: `${g.homeTeam?.wins || 0}-${g.homeTeam?.losses || 0}`,
-        },
-        {
-          label: `${awayAbbr} Away Record`,
-          value: `${g.awayTeam?.wins || 0}-${g.awayTeam?.losses || 0}`,
-        },
-        { label: "Model Pick", value: `${pick} (${pickProb}%)` },
-        { label: "Game Total", value: "225.5" },
-      ],
-    };
-  });
-}
-
-async function fetchServerScoreboard(date: string): Promise<LiveGame[]> {
-  const res = await fetch(`/api/nba/scoreboard?date=${date}`);
-  if (!res.ok) throw new Error("Server scoreboard fetch failed");
-  const data = await res.json();
-  const games = data.scoreboard?.games ?? data.games ?? [];
-
-  return games.map((g: any, idx: number) => {
-    const awayAbbr = mapTricode(g.awayTeam?.teamTricode || "");
-    const homeAbbr = mapTricode(g.homeTeam?.teamTricode || "");
-    const awayScore = g.awayTeam?.score ?? null;
-    const homeScore = g.homeTeam?.score ?? null;
-
-    const gameStatus = g.gameStatus; // 1=upcoming, 2=live, 3=final
-    const isLive = gameStatus === 2;
-    const isFinal = gameStatus === 3;
-
-    const { quarter, timeRemaining } = parsePeriodText(g);
-
-    const homeWins = parseInt(g.homeTeam?.wins || "40");
-    const awayWins = parseInt(g.awayTeam?.wins || "35");
-    const homeAdvantage = 3.5;
-    const marginDiff = (homeWins - awayWins) * 0.15 + homeAdvantage;
-    const homeProb = sigmoid(marginDiff);
-    const pickIsHome = homeProb >= 50;
-    const pick = pickIsHome ? homeAbbr : awayAbbr;
-    const pickProb = pickIsHome ? homeProb : 100 - homeProb;
-
-    const tipoffTime = g.gameStatusText || "";
-    const statusText = isFinal ? "final" : isLive ? "live" : "upcoming";
-
-    return {
-      id: g.gameId || `game-${idx}`,
-      away: {
-        abbr: awayAbbr,
-        name: TEAM_NAMES[awayAbbr] || g.awayTeam?.teamName || awayAbbr,
-        record: `${g.awayTeam?.wins || 0}-${g.awayTeam?.losses || 0}`,
-        teamId: NBA_TEAM_IDS[awayAbbr] || 0,
-        spread: `+${marginDiff.toFixed(1)}`,
-        ml: "+150",
-      },
-      home: {
-        abbr: homeAbbr,
-        name: TEAM_NAMES[homeAbbr] || g.homeTeam?.teamName || homeAbbr,
-        record: `${g.homeTeam?.wins || 0}-${g.homeTeam?.losses || 0}`,
-        teamId: NBA_TEAM_IDS[homeAbbr] || 0,
-        spread: `${(-marginDiff).toFixed(1)}`,
-        ml: "-170",
-      },
-      tipoff: isLive
-        ? `LIVE · Q${quarter} ${timeRemaining}`
-        : isFinal
-          ? "FINAL"
-          : tipoffTime,
-      network: g.broadcasters?.nationalBroadcasters?.[0]?.shortName || "NBA TV",
-      status: statusText,
-      isLive,
-      isFinal,
-      awayScore: awayScore !== null ? Number(awayScore) : null,
-      homeScore: homeScore !== null ? Number(homeScore) : null,
-      quarter,
-      timeRemaining,
-      totalLine: "o/u 225.5",
-      confidence: getConfidence(homeProb, pickIsHome),
-      pick,
-      pickReason: `${pick} ${pickIsHome ? "home court" : "road form"} advantage`,
-      pickProb,
-      winProbData: generateWinProbCurve(homeProb, homeAbbr, awayAbbr),
-      keyStats: [
-        {
-          label: `${homeAbbr} Home Record`,
-          value: `${g.homeTeam?.wins || 0}-${g.homeTeam?.losses || 0}`,
-        },
-        {
-          label: `${awayAbbr} Away Record`,
-          value: `${g.awayTeam?.wins || 0}-${g.awayTeam?.losses || 0}`,
-        },
+        { label: "Matchup", value: `${awayAbbr} @ ${homeAbbr}` },
         { label: "Model Pick", value: `${pick} (${pickProb}%)` },
         { label: "Game Total", value: "225.5" },
       ],
@@ -354,9 +269,7 @@ export function useNBAGames(date?: string) {
 
   const fetchGames = useCallback(async () => {
     try {
-      const liveGames = isToday
-        ? await fetchNBACDNScoreboard()
-        : await fetchServerScoreboard(date!);
+      const liveGames = await fetchBDLGames(date);
       setGames(liveGames);
       setError(null);
       setLastUpdated(new Date());
@@ -366,7 +279,7 @@ export function useNBAGames(date?: string) {
     } finally {
       setLoading(false);
     }
-  }, [date, isToday]);
+  }, [date]);
 
   useEffect(() => {
     setLoading(true);
