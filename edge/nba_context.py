@@ -6,9 +6,11 @@ Outputs: /workspace/projects/edge-protocol/context/nba-context-{date}.json
 
 Sources:
   1. nba_api        — official NBA stats, injury report, today's schedule
-  2. ESPN RSS        — breaking news, lineup changes, analyst takes
+  2. ESPN RSS        — breaking news, lineup changes, analyst takes (with full-text extraction)
   3. Reddit r/nba   — preview threads, analyst sentiment (no API key needed)
   4. Action Network  — public betting consensus & line movement
+  5. Reddit r/sportsbook — sharps/public betting discussion threads
+  6. YouTube         — video preview transcripts via Data API + auto-captions
 """
 
 import json
@@ -158,8 +160,26 @@ ESPN_FEEDS = [
     ("espn_nba_insider", "https://www.espn.com/espn/rss/nba/insider"),
 ]
 
+def fetch_espn_article_text(url):
+    """Fetch full article body text from an ESPN article URL."""
+    try:
+        resp = requests.get(url, headers=HEADERS, timeout=10)
+        html = resp.text
+        # Try <article> tags first, then <div class="article-body">
+        match = re.search(r'<article[^>]*>(.*?)</article>', html, re.DOTALL)
+        if not match:
+            match = re.search(r'<div\s+class="article-body"[^>]*>(.*?)</div>', html, re.DOTALL)
+        if match:
+            body = re.sub(r'<[^>]+>', '', match.group(1))
+            body = re.sub(r'\s+', ' ', body).strip()
+            return body[:1500]
+        return ""
+    except Exception:
+        return ""
+
+
 def fetch_espn_news():
-    """Pull latest ESPN NBA news via RSS."""
+    """Pull latest ESPN NBA news via RSS (with full-text extraction for top articles)."""
     print("[3/4] Fetching ESPN NBA news...")
     articles = []
     cutoff = datetime.datetime.utcnow() - datetime.timedelta(hours=20)
@@ -185,6 +205,15 @@ def fetch_espn_news():
                 })
         except Exception as e:
             print(f"  ⚠ ESPN RSS error ({feed_name}): {e}")
+
+    # Fetch full text for top 8 articles
+    for i, article in enumerate(articles[:8]):
+        link = article.get("link", "")
+        if link:
+            article["full_text"] = fetch_espn_article_text(link)
+            time.sleep(0.5)
+        else:
+            article["full_text"] = ""
 
     print(f"  → {len(articles)} ESPN articles")
     return articles
@@ -256,18 +285,18 @@ def fetch_reddit_previews(games: list):
     return reddit_data
 
 
-def _fetch_top_comments(permalink: str) -> list:
-    """Fetch top 3 comments from a Reddit thread."""
+def _fetch_top_comments(permalink: str, limit: int = 10) -> list:
+    """Fetch top comments from a Reddit thread."""
     if not permalink:
         return []
     try:
         time.sleep(1.0)
-        url = f"https://www.reddit.com{permalink}.json?limit=5&sort=top"
+        url = f"https://www.reddit.com{permalink}.json?limit={limit + 2}&sort=top"
         resp = requests.get(url, headers=REDDIT_HEADERS, timeout=8)
         data = resp.json()
         comments = data[1]["data"]["children"] if len(data) > 1 else []
         top = []
-        for c in comments[:3]:
+        for c in comments[:limit]:
             body = c.get("data", {}).get("body", "")
             if body and len(body) > 20 and body != "[deleted]":
                 top.append(body[:400])
@@ -354,6 +383,192 @@ def fetch_betting_consensus(games: list):
     return consensus
 
 
+# ── 5. Reddit r/sportsbook — Betting Discussion ─────────────────────────────
+SPORTSBOOK_HEADERS = {
+    "User-Agent": "EdgeProtocol/2.0 (NBA analysis bot)"
+}
+
+
+def fetch_sportsbook_threads(games: list):
+    """
+    Search Reddit r/sportsbook for betting discussion threads on today's games.
+    """
+    print("[5/6] Fetching Reddit r/sportsbook threads...")
+    threads = []
+
+    search_base = "https://www.reddit.com/r/sportsbook/search.json"
+
+    for game in games[:6]:
+        home = game.get("home_team", "")
+        away = game.get("away_team", "")
+        if not home or not away:
+            continue
+
+        try:
+            time.sleep(1.0)  # Reddit rate limits aggressively
+            resp = requests.get(
+                search_base,
+                params={
+                    "q": f"{away}+{home}",
+                    "restrict_sr": "true",
+                    "sort": "new",
+                    "t": "day",
+                },
+                headers=SPORTSBOOK_HEADERS,
+                timeout=10,
+            )
+            data = resp.json()
+            posts = data.get("data", {}).get("children", [])
+            if not posts:
+                continue
+
+            # Use the first matching thread
+            p = posts[0].get("data", {})
+            permalink = p.get("permalink", "")
+            comments = _fetch_sportsbook_comments(permalink, limit=10)
+
+            threads.append({
+                "game": f"{away} @ {home}",
+                "title": p.get("title", ""),
+                "score": p.get("score", 0),
+                "comments": comments,
+                "url": f"https://reddit.com{permalink}",
+            })
+        except Exception as e:
+            print(f"  ⚠ r/sportsbook error for {away}@{home}: {e}")
+
+    print(f"  → {len(threads)} sportsbook threads")
+    return threads
+
+
+def _fetch_sportsbook_comments(permalink: str, limit: int = 10) -> list:
+    """Fetch top comments from a r/sportsbook thread."""
+    if not permalink:
+        return []
+    try:
+        time.sleep(1.0)
+        url = f"https://www.reddit.com{permalink}.json?limit={limit + 2}&sort=top"
+        resp = requests.get(url, headers=SPORTSBOOK_HEADERS, timeout=8)
+        data = resp.json()
+        comments = data[1]["data"]["children"] if len(data) > 1 else []
+        result = []
+        for c in comments[:limit]:
+            body = c.get("data", {}).get("body", "")
+            if body and len(body) > 20 and body != "[deleted]":
+                result.append(body[:400])
+        return result
+    except Exception:
+        return []
+
+
+# ── 6. YouTube — Video Preview Transcripts ──────────────────────────────────
+def fetch_youtube_previews(games: list):
+    """
+    Search YouTube for NBA game prediction/preview videos and extract
+    auto-generated transcripts via the YouTube Data API.
+    """
+    api_key = os.environ.get('YOUTUBE_API_KEY', '')
+    if not api_key:
+        print("[6/6] Skipping YouTube previews (no YOUTUBE_API_KEY set)")
+        return []
+
+    print("[6/6] Fetching YouTube preview transcripts...")
+    results = []
+
+    # 24 hours ago in RFC 3339 format
+    published_after = (
+        datetime.datetime.utcnow() - datetime.timedelta(hours=24)
+    ).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    for game in games[:6]:
+        home = game.get("home_team", "")
+        away = game.get("away_team", "")
+        if not home or not away:
+            continue
+
+        try:
+            time.sleep(0.5)
+            search_url = "https://www.googleapis.com/youtube/v3/search"
+            resp = requests.get(
+                search_url,
+                params={
+                    "part": "snippet",
+                    "q": f"{away} vs {home} prediction",
+                    "type": "video",
+                    "maxResults": 3,
+                    "order": "date",
+                    "publishedAfter": published_after,
+                    "key": api_key,
+                },
+                timeout=10,
+            )
+            data = resp.json()
+            items = data.get("items", [])
+
+            for item in items:
+                video_id = item.get("id", {}).get("videoId", "")
+                snippet = item.get("snippet", {})
+                if not video_id:
+                    continue
+
+                transcript = _fetch_youtube_transcript(video_id)
+
+                results.append({
+                    "game": f"{away} @ {home}",
+                    "videoId": video_id,
+                    "title": snippet.get("title", ""),
+                    "channel": snippet.get("channelTitle", ""),
+                    "transcript": transcript,
+                    "url": f"https://www.youtube.com/watch?v={video_id}",
+                    "publishedAt": snippet.get("publishedAt", ""),
+                })
+        except Exception as e:
+            print(f"  ⚠ YouTube error for {away}@{home}: {e}")
+
+    print(f"  → {len(results)} YouTube transcripts")
+    return results
+
+
+def _fetch_youtube_transcript(video_id: str) -> str:
+    """
+    Fetch auto-generated transcript for a YouTube video by extracting
+    the caption track URL from the page source and parsing the XML.
+    """
+    try:
+        time.sleep(0.5)
+        watch_url = f"https://www.youtube.com/watch?v={video_id}"
+        resp = requests.get(watch_url, headers=HEADERS, timeout=10)
+        html = resp.text
+
+        # Extract caption track URL from the page source
+        # YouTube embeds timedtext URLs in the player config
+        match = re.search(
+            r'"captionTracks"\s*:\s*\[.*?"baseUrl"\s*:\s*"([^"]+)"',
+            html
+        )
+        if not match:
+            return ""
+
+        caption_url = match.group(1).replace("\\u0026", "&")
+        time.sleep(0.5)
+        caption_resp = requests.get(caption_url, timeout=10)
+        xml_text = caption_resp.text
+
+        # Parse XML transcript — extract text from <text> elements
+        segments = re.findall(r'<text[^>]*>(.*?)</text>', xml_text, re.DOTALL)
+        if not segments:
+            return ""
+
+        # Clean HTML entities and join
+        full_text = " ".join(
+            re.sub(r'&[^;]+;', ' ', seg).strip() for seg in segments
+        )
+        full_text = re.sub(r'\s+', ' ', full_text).strip()
+        return full_text[:2000]
+    except Exception:
+        return ""
+
+
 # ── Assemble & Save ───────────────────────────────────────────────────────────
 def build_context():
     print(f"\n🏀 Edge Protocol — NBA Context Ingestion")
@@ -365,6 +580,8 @@ def build_context():
     espn_news = fetch_espn_news()
     reddit_previews = fetch_reddit_previews(games)
     consensus = fetch_betting_consensus(games)
+    sportsbook = fetch_sportsbook_threads(games)
+    yt_transcripts = fetch_youtube_previews(games)
 
     # Build summary note for Jarvis
     injured_stars = [
@@ -381,7 +598,9 @@ def build_context():
         "injured_key_players": injured_stars,
         "espn_news": espn_news,
         "reddit_previews": reddit_previews,
+        "sportsbook_threads": sportsbook,
         "betting_consensus": consensus,
+        "youtube_transcripts": yt_transcripts,
         "jarvis_instructions": (
             "Use this context file before pricing any bets today. "
             "Key priorities: (1) Check injured_key_players — if a star is Out/Doubtful, "
@@ -389,7 +608,9 @@ def build_context():
             "(2) Compare our pricing vs betting_consensus moneyline/spread — "
             "if >15pp divergence, flag for calibration. "
             "(3) Use reddit_previews top_comments for qualitative insight on team form. "
-            "(4) ESPN news may contain last-minute lineup changes — prioritize recency."
+            "(4) ESPN news may contain last-minute lineup changes — prioritize recency. "
+            "(5) sportsbook_threads contain sharp bettor discussion — look for consensus leans. "
+            "(6) youtube_transcripts from preview videos provide analyst predictions and reasoning."
         ),
     }
 
@@ -404,7 +625,9 @@ def build_context():
     print(f"   Stars out/doubtful: {len(injured_stars)}")
     print(f"   ESPN articles:    {len(espn_news)}")
     print(f"   Reddit threads:   {len(reddit_previews)}")
+    print(f"   Sportsbook thrds: {len(sportsbook)}")
     print(f"   Consensus lines:  {len(consensus)} games")
+    print(f"   YT transcripts:   {len(yt_transcripts)}")
     print()
 
     return context

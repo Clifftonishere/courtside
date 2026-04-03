@@ -23,9 +23,60 @@ const { pricebet } = require('./odds-agent');
 const { buildContext, fetchInjuries } = require('./context');
 const { logPrediction, resolvePrediction, getAccuracyReport } = require('./logger');
 const { getRequestsUsed, getRequestsRemaining } = require('./market');
+const { analyzeQuery } = require('./analyze');
 
 const PORT = process.env.PORT || 3747;
 const API_KEY = process.env.EDGE_API_KEY || 'edge-dev-key';
+
+// ── Rate limiting ───────────────────────────────────────
+const rateLimits = new Map(); // key → { count, resetAt }
+const RATE_LIMITS = {
+  '/price':   { max: 60,  windowMs: 60000 },  // 60 req/min
+  '/analyze': { max: 10,  windowMs: 60000 },  // 10 req/min (expensive)
+  default:    { max: 120, windowMs: 60000 },   // 120 req/min general
+};
+
+function checkRateLimit(pathname, clientKey) {
+  const config = RATE_LIMITS[pathname] || RATE_LIMITS.default;
+  const key = `${clientKey}:${pathname}`;
+  const now = Date.now();
+  let entry = rateLimits.get(key);
+
+  if (!entry || now > entry.resetAt) {
+    entry = { count: 0, resetAt: now + config.windowMs };
+    rateLimits.set(key, entry);
+  }
+  entry.count++;
+
+  if (entry.count > config.max) {
+    return { limited: true, retryAfter: Math.ceil((entry.resetAt - now) / 1000) };
+  }
+  return { limited: false };
+}
+
+// Clean up stale rate limit entries every 5 min
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of rateLimits) {
+    if (now > entry.resetAt + 60000) rateLimits.delete(key);
+  }
+}, 300000);
+
+// ── Crash monitoring ────────────────────────────────────
+let requestCount = 0;
+let errorCount = 0;
+const startedAt = new Date().toISOString();
+
+process.on('uncaughtException', (err) => {
+  console.error('[CRASH] Uncaught exception:', err.message, err.stack);
+  errorCount++;
+  // Don't exit — let systemd restart if needed
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('[CRASH] Unhandled rejection:', reason);
+  errorCount++;
+});
 
 // ── Helpers ──────────────────────────────────────────────
 function json(res, status, data) {
@@ -80,7 +131,7 @@ async function handlePrice(req, res) {
 
   try {
     const result = await pricebet(player, stat, condition, Number(threshold), {
-      game_date: new Date().toISOString().split('T')[0],
+      game_date: context.game_date || context.date || new Date().toISOString().split('T')[0],
       ...context,
     });
 
@@ -194,7 +245,7 @@ function handlePlayer(req, res, name) {
       if (!r.error) {
         summary[stat].thresholds[`over_${th}`] = {
           pct: r.baseline_pct,
-          l10: r.splits.last_10.pct,
+          l10: r.splits.last_10?.pct ?? null,
           sample: r.sample_size,
         };
       }
@@ -212,8 +263,15 @@ function handleDefense(req, res, team) {
   const path = require('path');
   const DATA_DIR = path.join(__dirname, 'data');
 
-  const teamDef = JSON.parse(fs.readFileSync(path.join(DATA_DIR, 'team_defense.json')));
-  const posDef  = JSON.parse(fs.readFileSync(path.join(DATA_DIR, 'pos_defense.json')));
+  let teamDef = {}, posDef = {};
+  try {
+    const tdFile = path.join(DATA_DIR, 'team_defense.json');
+    const pdFile = path.join(DATA_DIR, 'pos_defense.json');
+    if (fs.existsSync(tdFile)) teamDef = JSON.parse(fs.readFileSync(tdFile));
+    if (fs.existsSync(pdFile)) posDef = JSON.parse(fs.readFileSync(pdFile));
+  } catch (e) {
+    return json(res, 500, { error: `Failed to load defense data: ${e.message}` });
+  }
 
   const t = team.toUpperCase();
   const td = teamDef[t];
@@ -231,12 +289,12 @@ function handleDefense(req, res, team) {
 async function handleInjuries(req, res) {
   const injuries = await fetchInjuries();
   const byStatus = { Out: [], DayToDay: [], Questionable: [] };
-  for (const p of Object.values(injuries)) {
+  for (const p of injuries.values()) {
     if (p.status === 'Out') byStatus.Out.push(p);
     else if (p.status === 'Day-To-Day') byStatus.DayToDay.push(p);
     else byStatus.Questionable.push(p);
   }
-  json(res, 200, { total: Object.keys(injuries).length, ...byStatus });
+  json(res, 200, { total: injuries.size, ...byStatus });
 }
 
 // GET /games/today
@@ -594,6 +652,27 @@ async function handleMarketsToday(req, res) {
   }
 }
 
+// POST /analyze
+// Body: { query, detail? }
+async function handleAnalyze(req, res) {
+  const body = await parseBody(req);
+  const { query, detail } = body;
+
+  if (!query) {
+    return json(res, 400, {
+      error: 'Required field: query',
+      example: { query: 'Who wins MIA vs PHI tonight?', detail: 'full' },
+    });
+  }
+
+  try {
+    const result = await analyzeQuery(query, { detail: detail || 'full' });
+    json(res, 200, result);
+  } catch (e) {
+    json(res, 500, { error: e.message });
+  }
+}
+
 // ── Main router ──────────────────────────────────────────
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://localhost:${PORT}`);
@@ -608,6 +687,18 @@ const server = http.createServer(async (req, res) => {
   // Auth (skip for health)
   if (pathname !== '/health' && !authCheck(req, res)) return;
 
+  // Rate limiting (skip for health)
+  if (pathname !== '/health') {
+    const clientKey = req.headers['x-api-key'] || req.socket.remoteAddress || 'unknown';
+    const rateCheck = checkRateLimit(pathname, clientKey);
+    if (rateCheck.limited) {
+      res.writeHead(429, { 'Content-Type': 'application/json', 'Retry-After': String(rateCheck.retryAfter) });
+      return res.end(JSON.stringify({ error: 'Rate limit exceeded', retry_after_seconds: rateCheck.retryAfter }));
+    }
+  }
+
+  requestCount++;
+
   try {
     if (pathname === '/health' && req.method === 'GET') {
       const remaining = getRequestsRemaining();
@@ -615,6 +706,9 @@ const server = http.createServer(async (req, res) => {
         status: 'ok',
         engine: 'Edge Protocol v2',
         uptime: Math.round(process.uptime()),
+        started_at: startedAt,
+        requests_served: requestCount,
+        errors: errorCount,
         odds_api: {
           enabled: !!process.env.ODDS_API_KEY,
           requests_used_session: getRequestsUsed(),
@@ -623,6 +717,7 @@ const server = http.createServer(async (req, res) => {
       });
     }
     if (pathname === '/price' && req.method === 'POST') return await handlePrice(req, res);
+    if (pathname === '/analyze' && req.method === 'POST') return await handleAnalyze(req, res);
     if (pathname === '/resolve' && req.method === 'PATCH') return await handleResolve(req, res);
     if (pathname === '/accuracy' && req.method === 'GET') return handleAccuracy(req, res);
     if (pathname.startsWith('/player/') && req.method === 'GET') return handlePlayer(req, res, pathname.split('/player/')[1]);
@@ -635,6 +730,7 @@ const server = http.createServer(async (req, res) => {
       error: 'Not found',
       endpoints: {
         'POST  /price': 'Price a bet',
+        'POST  /analyze': 'Analyze a game (natural language)',
         'PATCH /resolve': 'Resolve prediction outcome',
         'GET   /accuracy': 'Accuracy & calibration report',
         'GET   /player/:name': 'Player stats',
